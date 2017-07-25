@@ -11,6 +11,7 @@ module Keycloak
 		attr_accessor :proxy, :generate_request_exception
 	end
 
+
 	def self.explode_exception
 		if Keycloak::generate_request_exception == nil
 			Keycloak::generate_request_exception = true
@@ -29,14 +30,11 @@ module Keycloak
 			attr_accessor :admin
 		end
 
-		KEYCLOAK_JSON_FILE = 'keycloak.json'
-
-		def self.setup_module
-			if Keycloak::proxy == nil
-				Keycloak::proxy = ''
-			end
-			get_installation
+		def self.teste
+			puts 'testeeeeeeeeeeee'
 		end
+
+		KEYCLOAK_JSON_FILE = 'keycloak.json'
 
 		def self.get_token(user, password)
 			setup_module
@@ -148,6 +146,13 @@ module Keycloak
 
 		private
 
+			def self.setup_module
+				if Keycloak::proxy == nil
+					Keycloak::proxy = ''
+				end
+				get_installation
+			end
+
 			def self.exec_request(proc_request)
 				if Keycloak::explode_exception
 					proc_request.call
@@ -217,12 +222,12 @@ module Keycloak
 			@realm = realm
 		end
 
-		def self.get_users( parameters = nil)
-			generic_get("users/", parameters)
+		def self.get_users( queryParameters = nil)
+			generic_get("users/", queryParameters)
 		end
 
 		def self.create_user(userRepresentation)
-			generic_post("users/", userRepresentation)
+			generic_post("users/", nil, userRepresentation)
 		end
 
 		def self.count_users
@@ -234,7 +239,7 @@ module Keycloak
 		end
 
 		def self.update_user(id, userRepresentation)
-			generic_update("users/#{id}", userRepresentation)
+			generic_update("users/#{id}", nil, userRepresentation)
 		end
 
 		def self.delete_user(id)
@@ -245,22 +250,22 @@ module Keycloak
 			generic_delete("users/#{id}/consents/#{clientID}")
 		end
 
-		def self.update_account_email(id, redirectUri, clientID)
-			generic_update()
+		def self.update_account_email(id, redirectUri, clientID, actions)
+			generic_update("users/#{id}/execute-actions-email", {:redirect_uri => redirectUri, :client_id => clientID}, actions)
 		end
 
 		# Generics methods
 
-		def self.generic_get(service, parameters = nil)
-			generic_request(service, parameters, 'GET')
+		def self.generic_get(service, queryParameters = nil)
+			generic_request(service, queryParameters, 'GET')
 		end
 
-		def self.generic_post(service, bodyParameter)
+		def self.generic_post(service, queryParameters, bodyParameter)
 			generic_request(service, bodyParameter, 'POST')
 		end
 
-		def self.generic_update(service, bodyParameter)
-			generic_request(service, bodyParameter, 'PUT')
+		def self.generic_update(service, queryParameters, bodyParameter)
+			generic_request(service, queryParameters, bodyParameter, 'PUT')
 		end
 
 		def self.generic_delete(service)
@@ -273,18 +278,19 @@ module Keycloak
 				@auth_server_url + "/admin/realms/#{@realm}/"
 			end
 
-			def self.generic_request(service, parameters, method)
+			def self.generic_request(service, queryParameters, bodyParameter, method)
 				final_url = base_url + service
 
 				header = {'Content-Type' => 'application/x-www-form-urlencoded',
 									'Authorization' => "Bearer #{@access_token}"}
 
+				if queryParameters
+					parameters = URI.encode_www_form(queryParameters)
+					final_url = final_url << '?' << parameters
+				end
+
 				case method.upcase
 				when 'GET'
-					if parameters
-						parameters = URI.encode_www_form(parameters)
-						final_url = final_url << '?' << parameters
-					end
 					_request = -> do
 						RestClient.get(final_url, header){|response, request, result|
 							rescue_response(response)
@@ -292,7 +298,7 @@ module Keycloak
 					end
 				when 'POST', 'PUT'
 					header["Content-Type"] = 'application/json'
-					parameters = JSON.generate parameters
+					parameters = JSON.generate bodyParameter
 					_request = -> do
 						case method.upcase
 						when 'POST'
