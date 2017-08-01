@@ -357,15 +357,17 @@ module Keycloak
 			roles = Array.new
 			# Include new role
 			rolesNames.each do |r|
-				found = false
-				userRoles.each do |ur|
-					found = ur['name'] == r
-					break if found
+				if r
 					found = false
-				end
-				if !found
-					role = JSON get_roles_client_by_name(client[0]['id'], r)
-					roles.push(role)
+					userRoles.each do |ur|
+						found = ur['name'] == r
+						break if found
+						found = false
+					end
+					if !found
+						role = JSON get_roles_client_by_name(client[0]['id'], r)
+						roles.push(role)
+					end
 				end
 			end
 
@@ -374,20 +376,22 @@ module Keycloak
 			userRoles.each do |ur|
 				found = false
 				rolesNames.each do |r|
-					found = ur['name'] == r
-					break if found
-					found = false
+					if r
+						found = ur['name'] == r
+						break if found
+						found = false
+					end
 				end
 				if !found
 					garbageRoles.push(ur)
 				end
 			end
 
-			if garbageRoles.length > 0
+			if garbageRoles.count > 0
 				delete_client_level_roles_fom_user(id, client[0]['id'], garbageRoles)
 			end
 
-			if roles.length > 0
+			if roles.count > 0
 				add_client_level_roles_to_user(id, client[0]['id'], roles)
 			end
 		end
