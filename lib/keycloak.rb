@@ -8,7 +8,7 @@ require 'uri'
 module Keycloak
 
   class << self
-		attr_accessor :proxy, :generate_request_exception
+		attr_accessor :proxy, :generate_request_exception, :keycloak_controller
 	end
 
 
@@ -22,16 +22,12 @@ module Keycloak
 	module Client
 
 		class << self
-			attr_reader :user, :password, :realm, :url, :clientID, :auth_server_url,
+			attr_reader :user, :password, :realm, :url, :client_id, :auth_server_url,
 									:secret, :configuration, :public_key, :decoded_access_token,
 									:token, :token_introspection, :decoded_refresh_token,
 									:active, :decoded_id_token, :userinfo
 
-			attr_accessor :admin
-		end
-
-		def self.teste
-			puts 'testeeeeeeeeeeee'
+			attr_accessor :external_attributes
 		end
 
 		KEYCLOAK_JSON_FILE = 'keycloak.json'
@@ -66,6 +62,7 @@ module Keycloak
 		end
 
 		def self.get_token_introspection(refresh = false)
+			reset_active(false)
 			unless refresh
 				payload = {'token' => @token["access_token"]}
 			else
@@ -86,8 +83,10 @@ module Keycloak
 						@active = @token_introspection['active']
 						@token_introspection
 					else
-						reset_active
 						response.return!
+					end
+					if !@active
+						reset_active
 					end
 				}
 			end
@@ -100,8 +99,37 @@ module Keycloak
 			"#{@configuration['authorization_endpoint']}?#{p}"
 		end
 
-		def self.url_logout(redirect_uri)
-			"#{@configuration['end_session_endpoint']}?redirect_uri=#{redirect_uri}"
+		def self.logout(redirect_uri = '')
+			if @token
+				payload = {'client_id' => @client_id,
+									'client_secret' => @secret,
+									'refresh_token' => @token["refresh_token"]
+									}
+
+				header = {'Content-Type' => 'application/x-www-form-urlencoded'}
+
+				if redirect_uri.empty?
+					final_url = @configuration['end_session_endpoint']
+				else
+					final_url = "#{@configuration['end_session_endpoint']}?#{URI.encode_www_form({:redirect_uri => redirect_uri})}"
+				end
+
+				_request = -> do
+					RestClient.post(final_url, payload, header){|response, request, result|
+						case response.code
+						when 200..399
+							reset_active
+							true
+						else
+							response.return!
+						end
+					}
+				end
+
+				exec_request _request
+			else
+				true
+			end
 		end
 
 		def self.get_userinfo
@@ -144,12 +172,43 @@ module Keycloak
 			end
 		end
 
+		def self.has_role?(userRole)
+			if user_signed_in?
+				dt = @decoded_access_token[0]
+				dt = dt["resource_access"][@client_id]
+				if dt != nil
+					dt["roles"].each do |role|
+						return true if role.to_s == userRole.to_s
+					end
+					false
+				else
+					false
+				end
+			else
+				false
+			end
+		end
+
+		def self.user_signed_in?
+			begin
+				get_token_introspection['active']
+			rescue
+				@active
+			end
+		end
+
+		def self.get_attribute(attributeName)
+			attr = @decoded_access_token[0]
+			attr[attributeName]
+		end
+
 		private
 
+			KEYCLOACK_CONTROLLER_DEFAULT = 'session'
+
 			def self.setup_module
-				if Keycloak::proxy == nil
-					Keycloak::proxy = ''
-				end
+				Keycloak::proxy ||= ''
+				Keycloak::keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
 				get_installation
 			end
 
@@ -179,8 +238,12 @@ module Keycloak
 				end
 			end
 
-			def self.reset_active
+			def self.reset_active(resetExternalAttributes = true)
 				@active = false
+				@userinfo = nil
+				if resetExternalAttributes
+				 @external_attributes = nil
+				end
 			end
 
 			def self.mount_request_token(payload)
@@ -194,9 +257,10 @@ module Keycloak
 							@token = JSON response.body
 							@decoded_access_token = JWT.decode @token["access_token"], @public_key, false, { :algorithm => 'RS256' }
 							@decoded_refresh_token = JWT.decode @token["refresh_token"], @public_key, false, { :algorithm => 'RS256' }
-							@decoded_id_token = JWT.decode @token["id_token"], @public_key, false, { :algorithm => 'RS256' }
-							#@admin = Admin.new(@auth_server_url, @realm,  @token["access_token"])
-							Keycloak::Admin::setup_admin(@auth_server_url, @realm,  @token["access_token"])
+							if @token["id_token"]
+								@decoded_id_token = JWT.decode @token["id_token"], @public_key, false, { :algorithm => 'RS256' }
+							end
+							Keycloak::Admin::setup_admin(@auth_server_url, @realm, @token["access_token"])
 							@token
 						else
 							response.return!
@@ -239,37 +303,111 @@ module Keycloak
 		end
 
 		def self.update_user(id, userRepresentation)
-			generic_update("users/#{id}", nil, userRepresentation)
+			generic_put("users/#{id}", nil, userRepresentation)
 		end
 
 		def self.delete_user(id)
 			generic_delete("users/#{id}")
 		end
 
-		def self.revoke_consent_user(id, clientID)
+		def self.revoke_consent_user(id, clientID = nil)
+			if !clientID
+				clientID = Keycloak::Client.client_id
+			end
 			generic_delete("users/#{id}/consents/#{clientID}")
 		end
 
-		def self.update_account_email(id, redirectUri, clientID, actions)
-			generic_update("users/#{id}/execute-actions-email", {:redirect_uri => redirectUri, :client_id => clientID}, actions)
+		def self.update_account_email(id, actions, redirectUri = '', clientID = nil)
+			generic_put("users/#{id}/execute-actions-email", {:redirect_uri => redirectUri, :client_id => clientID}, actions)
+		end
+
+		def self.get_role_mappings(id)
+			generic_get("users/#{id}/role-mappings")
+		end
+
+		def self.get_clients(queryParameters = nil)
+			generic_get("clients/", queryParameters)
+		end
+
+		def self.get_all_roles_client(id)
+			generic_get("clients/#{id}/roles")
+		end
+
+		def self.get_roles_client_by_name(id, roleName)
+			generic_get("clients/#{id}/roles/#{roleName}")
+		end
+
+		def self.add_client_level_roles_to_user(id, client, roleRepresentation)
+			generic_post("users/#{id}/role-mappings/clients/#{client}", nil, roleRepresentation)
+		end
+
+		def self.delete_client_level_roles_fom_user(id, client, roleRepresentation)
+			generic_delete("users/#{id}/role-mappings/clients/#{client}", nil, roleRepresentation)
+		end
+
+		def self.get_client_level_role_for_user_and_app(id, client)
+			generic_get("users/#{id}/role-mappings/clients/#{client}")
+		end
+
+		def self.update_effective_user_roles(id, clientID, rolesNames)
+			client = JSON get_clients({:clientId => clientID})
+
+			userRoles = JSON get_client_level_role_for_user_and_app(id, client[0]['id'])
+
+			roles = Array.new
+			# Include new role
+			rolesNames.each do |r|
+				found = false
+				userRoles.each do |ur|
+					found = ur['name'] == r
+					break if found
+					found = false
+				end
+				if !found
+					role = JSON get_roles_client_by_name(client[0]['id'], r)
+					roles.push(role)
+				end
+			end
+
+			garbageRoles = Array.new
+			# Exclude old role
+			userRoles.each do |ur|
+				found = false
+				rolesNames.each do |r|
+					found = ur['name'] == r
+					break if found
+					found = false
+				end
+				if !found
+					garbageRoles.push(ur)
+				end
+			end
+
+			if garbageRoles.length > 0
+				delete_client_level_roles_fom_user(id, client[0]['id'], garbageRoles)
+			end
+
+			if roles.length > 0
+				add_client_level_roles_to_user(id, client[0]['id'], roles)
+			end
 		end
 
 		# Generics methods
 
 		def self.generic_get(service, queryParameters = nil)
-			generic_request(service, queryParameters, 'GET')
+			generic_request(service, queryParameters, nil, 'GET')
 		end
 
 		def self.generic_post(service, queryParameters, bodyParameter)
-			generic_request(service, bodyParameter, 'POST')
+			generic_request(service, queryParameters, bodyParameter, 'POST')
 		end
 
-		def self.generic_update(service, queryParameters, bodyParameter)
+		def self.generic_put(service, queryParameters, bodyParameter)
 			generic_request(service, queryParameters, bodyParameter, 'PUT')
 		end
 
-		def self.generic_delete(service)
-			generic_request(service, nil, 'DELETE')
+		def self.generic_delete(service, queryParameters = nil, bodyParameter = nil)
+			generic_request(service, queryParameters, bodyParameter, 'DELETE')
 		end
 
 		private
@@ -313,9 +451,18 @@ module Keycloak
 					end
 				when 'DELETE'
 					_request = -> do
-						RestClient.delete(final_url, header){|response, request, result|
-							rescue_response(response)
-						}
+						if bodyParameter
+							header["Content-Type"] = 'application/json'
+							parameters = JSON.generate bodyParameter
+							RestClient::Request.execute(method: :delete, url: final_url,
+														payload: parameters, headers: header){|response, request, result|
+								rescue_response(response)
+							}
+						else
+							RestClient.delete(final_url, header){|response, request, result|
+								rescue_response(response)
+							}
+						end
 					end
 				else
 					raise
