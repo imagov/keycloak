@@ -357,7 +357,7 @@ module Keycloak
 			roles = Array.new
 			# Include new role
 			rolesNames.each do |r|
-				if r
+				if r && !r.empty?
 					found = false
 					userRoles.each do |ur|
 						found = ur['name'] == r
@@ -376,7 +376,7 @@ module Keycloak
 			userRoles.each do |ur|
 				found = false
 				rolesNames.each do |r|
-					if r
+					if r && !r.empty?
 						found = ur['name'] == r
 						break if found
 						found = false
@@ -394,6 +394,10 @@ module Keycloak
 			if roles.count > 0
 				add_client_level_roles_to_user(id, client[0]['id'], roles)
 			end
+		end
+
+		def self.reset_password(id, credentialRepresentation)
+			generic_put("users/#{id}/reset-password", nil, credentialRepresentation)
 		end
 
 		# Generics methods
