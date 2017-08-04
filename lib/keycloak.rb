@@ -7,16 +7,17 @@ require 'uri'
 
 module Keycloak
 
-  class << self
-		attr_accessor :proxy, :generate_request_exception, :keycloak_controller
+	class << self
+		attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
+		              :last_response
 	end
 
 
 	def self.explode_exception
-		if Keycloak::generate_request_exception == nil
-			Keycloak::generate_request_exception = true
+		if Keycloak.generate_request_exception == nil
+			Keycloak.generate_request_exception = true
 		end
-		Keycloak::generate_request_exception
+		Keycloak.generate_request_exception
 	end
 
 	module Client
@@ -39,11 +40,11 @@ module Keycloak
 			@user, @password = user, password
 
 			payload = {'client_id' => @client_id,
-								'client_secret' => @secret,
-								'username' => @user,
-								'password' => @password,
-								'grant_type' => 'password'
-								}
+					   'client_secret' => @secret,
+					   'username' => @user,
+					   'password' => @password,
+					   'grant_type' => 'password'
+					  }
 
 			mount_request_token(payload)
 		end
@@ -207,13 +208,13 @@ module Keycloak
 			KEYCLOACK_CONTROLLER_DEFAULT = 'session'
 
 			def self.setup_module
-				Keycloak::proxy ||= ''
-				Keycloak::keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
+				Keycloak.proxy ||= ''
+				Keycloak.keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
 				get_installation
 			end
 
 			def self.exec_request(proc_request)
-				if Keycloak::explode_exception
+				if Keycloak.explode_exception
 					proc_request.call
 				else
 					begin
@@ -225,7 +226,7 @@ module Keycloak
 			end
 
 			def self.openid_configuration
-				RestClient.proxy = Keycloak::proxy unless Keycloak::proxy.empty?
+				RestClient.proxy = Keycloak.proxy unless Keycloak.proxy.empty?
 				full_url = "#{@url}/realms/#{@realm}/.well-known/openid-configuration"
 				_request = -> do
 					RestClient.get full_url
@@ -260,7 +261,7 @@ module Keycloak
 							if @token["id_token"]
 								@decoded_id_token = JWT.decode @token["id_token"], @public_key, false, { :algorithm => 'RS256' }
 							end
-							Keycloak::Admin::setup_admin(@auth_server_url, @realm, @token["access_token"])
+							Keycloak::Admin.setup_admin(@auth_server_url, @realm, @token["access_token"])
 							@token
 						else
 							response.return!
@@ -277,7 +278,7 @@ module Keycloak
 	module Admin
 
 		class << self
-			attr_reader :access_token, :auth_server_url, :realm, :last_response
+			attr_reader :access_token, :auth_server_url, :realm
 		end
 
 		def self.setup_admin(auth_server_url, realm, access_token)
@@ -311,13 +312,16 @@ module Keycloak
 		end
 
 		def self.revoke_consent_user(id, clientID = nil)
-			if !clientID
+			if clientID.nil?
 				clientID = Keycloak::Client.client_id
 			end
 			generic_delete("users/#{id}/consents/#{clientID}")
 		end
 
 		def self.update_account_email(id, actions, redirectUri = '', clientID = nil)
+			if clientID.nil?
+				clientID = Keycloak::Client.client_id
+			end
 			generic_put("users/#{id}/execute-actions-email", {:redirect_uri => redirectUri, :client_id => clientID}, actions)
 		end
 
@@ -403,19 +407,19 @@ module Keycloak
 		# Generics methods
 
 		def self.generic_get(service, queryParameters = nil)
-			generic_request(service, queryParameters, nil, 'GET')
+			Keycloak.generic_request(@access_token, full_url(service), queryParameters, nil, 'GET')
 		end
 
 		def self.generic_post(service, queryParameters, bodyParameter)
-			generic_request(service, queryParameters, bodyParameter, 'POST')
+			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'POST')
 		end
 
 		def self.generic_put(service, queryParameters, bodyParameter)
-			generic_request(service, queryParameters, bodyParameter, 'PUT')
+			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'PUT')
 		end
 
 		def self.generic_delete(service, queryParameters = nil, bodyParameter = nil)
-			generic_request(service, queryParameters, bodyParameter, 'DELETE')
+			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'DELETE')
 		end
 
 		private
@@ -424,86 +428,184 @@ module Keycloak
 				@auth_server_url + "/admin/realms/#{@realm}/"
 			end
 
-			def self.generic_request(service, queryParameters, bodyParameter, method)
-				final_url = base_url + service
-
-				header = {'Content-Type' => 'application/x-www-form-urlencoded',
-									'Authorization' => "Bearer #{@access_token}"}
-
-				if queryParameters
-					parameters = URI.encode_www_form(queryParameters)
-					final_url = final_url << '?' << parameters
-				end
-
-				case method.upcase
-				when 'GET'
-					_request = -> do
-						RestClient.get(final_url, header){|response, request, result|
-							rescue_response(response)
-						}
-					end
-				when 'POST', 'PUT'
-					header["Content-Type"] = 'application/json'
-					parameters = JSON.generate bodyParameter
-					_request = -> do
-						case method.upcase
-						when 'POST'
-							RestClient.post(final_url, parameters, header){|response, request, result|
-								rescue_response(response)
-							}
-						else
-							RestClient.put(final_url, parameters, header){|response, request, result|
-								rescue_response(response)
-							}
-						end
-					end
-				when 'DELETE'
-					_request = -> do
-						if bodyParameter
-							header["Content-Type"] = 'application/json'
-							parameters = JSON.generate bodyParameter
-							RestClient::Request.execute(method: :delete, url: final_url,
-														payload: parameters, headers: header){|response, request, result|
-								rescue_response(response)
-							}
-						else
-							RestClient.delete(final_url, header){|response, request, result|
-								rescue_response(response)
-							}
-						end
-					end
-				else
-					raise
-				end
-
-				_request.call
-
+			def self.full_url(service)
+				base_url + service
 			end
 
-			def self.rescue_response(response)
-				@last_response = response
-				case @last_response.code
-				when 200..399
-					if @last_response.body.empty?
-						true
-					else
-						@last_response.body
+	end
+
+	module Internal
+		include Keycloak::Admin
+
+		class << self
+			attr_accessor :admin_user, :admin_password
+		end
+
+		def self.forgot_password(userID, redirectURI)
+			proc = lambda {|token|
+				Keycloak.generic_request(token["access_token"],
+										 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userID}/execute-actions-email",
+										 {:redirect_uri => redirectURI, :client_id => Keycloak::Client.client_id},
+										 ['UPDATE_PASSWORD'],
+										 'PUT')
+			}
+
+			default_call(proc)
+
+		end
+
+		def self.get_logged_user_info
+			proc = lambda {|token|
+			    userinfo = Keycloak::Client.get_userinfo
+				Keycloak.generic_request(token["access_token"],
+							             Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userinfo['sub']}",
+										 nil, nil, 'GET')
+			}
+
+			default_call(proc)
+		end
+
+		def self.is_logged_federation_user?
+			info = get_logged_user_info
+			info['federationLink'] != nil
+		end
+
+		protected
+
+			def self.default_call(proc)
+				begin
+					tk = nil
+					resp = nil
+
+					Keycloak::Client.get_installation
+
+					payload = {'client_id' => Keycloak::Client.client_id,
+							'client_secret' => Keycloak::Client.secret,
+							'username' => @admin_user,
+							'password' => @admin_password,
+							'grant_type' => 'password'
+							}
+
+					header = {'Content-Type' => 'application/x-www-form-urlencoded'}
+
+					_request = -> do
+						RestClient.post(Keycloak::Client.configuration['token_endpoint'], payload, header){|response, request, result|
+							case response.code
+							when 200..399
+								tk = JSON response.body
+								resp = proc.call(tk)
+							else
+								response.return!
+							end
+						}
 					end
-				else
-					if Keycloak::explode_exception
-						@last_response.return!
-					else
-						begin
-							@last_response.return!
-						rescue RestClient::ExceptionWithResponse => err
-							err.response
-						rescue Exception => e
-							e.message
+
+					Keycloak::Client.exec_request _request
+				ensure
+					if tk
+						payload = {'client_id' => Keycloak::Client.client_id,
+											'client_secret' => Keycloak::Client.secret,
+											'refresh_token' => tk["refresh_token"]
+											}
+
+						header = {'Content-Type' => 'application/x-www-form-urlencoded'}
+						_request = -> do
+							RestClient.post(Keycloak::Client.configuration['end_session_endpoint'], payload, header){|response, request, result|
+								case response.code
+								when 200..399
+									resp if resp.nil?
+								else
+									response.return!
+								end
+							}
 						end
+						Keycloak::Client.exec_request _request
 					end
 				end
 			end
 
 	end
+
+	private
+
+		def self.generic_request(accessToken, uri, queryParameters, bodyParameter, method)
+			final_url = uri
+
+			header = {'Content-Type' => 'application/x-www-form-urlencoded',
+								'Authorization' => "Bearer #{accessToken}"}
+
+			if queryParameters
+				parameters = URI.encode_www_form(queryParameters)
+				final_url = final_url << '?' << parameters
+			end
+
+			case method.upcase
+			when 'GET'
+				_request = -> do
+					RestClient.get(final_url, header){|response, request, result|
+						rescue_response(response)
+					}
+				end
+			when 'POST', 'PUT'
+				header["Content-Type"] = 'application/json'
+				parameters = JSON.generate bodyParameter
+				_request = -> do
+					case method.upcase
+					when 'POST'
+						RestClient.post(final_url, parameters, header){|response, request, result|
+							rescue_response(response)
+						}
+					else
+						RestClient.put(final_url, parameters, header){|response, request, result|
+							rescue_response(response)
+						}
+					end
+				end
+			when 'DELETE'
+				_request = -> do
+					if bodyParameter
+						header["Content-Type"] = 'application/json'
+						parameters = JSON.generate bodyParameter
+						RestClient::Request.execute(method: :delete, url: final_url,
+													payload: parameters, headers: header){|response, request, result|
+							rescue_response(response)
+						}
+					else
+						RestClient.delete(final_url, header){|response, request, result|
+							rescue_response(response)
+						}
+					end
+				end
+			else
+				raise
+			end
+
+			_request.call
+
+		end
+
+		def self.rescue_response(response)
+			@last_response = response
+			case @last_response.code
+			when 200..399
+				if @last_response.body.empty?
+					true
+				else
+					@last_response.body
+				end
+			else
+				if Keycloak.explode_exception
+					@last_response.return!
+				else
+					begin
+						@last_response.return!
+					rescue RestClient::ExceptionWithResponse => err
+						err.response
+					rescue Exception => e
+						e.message
+					end
+				end
+			end
+		end
 
 end

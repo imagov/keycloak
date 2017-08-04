@@ -4,11 +4,14 @@ class InitializerGenerator < Rails::Generators::Base
 			proxy = ""
 			generate_request_exception = true
 			"# Set proxy to connect in keycloak server
-			 Keycloak::proxy = #{proxy}
+			 Keycloak.proxy = #{proxy}
 			 # If true, then all request exception will explode in application (this is the default value)
-			 Keycloak::generate_request_exception = #{generate_request_exception}
+			 Keycloak.generate_request_exception = #{generate_request_exception}
 			 # controller that manage the user session
-			 Keycloak::keycloak_controller = 'session'"
+			 Keycloak.keycloak_controller = 'session'
+			 # internal user for admin tasks
+			 Keycloak::Internal.admin_user = ''
+			 Keycloak::Internal.admin_password = ''"
     end
   end
 end
