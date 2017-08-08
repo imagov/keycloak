@@ -1,4 +1,4 @@
-require "keycloak/version"
+require 'keycloak/version'
 require 'rest-client'
 require 'json'
 require 'jwt'
@@ -441,7 +441,7 @@ module Keycloak
 			attr_accessor :admin_user, :admin_password
 		end
 
-		def self.forgot_password(userID, redirectURI)
+		def self.change_password(userID, redirectURI)
 			proc = lambda {|token|
 				Keycloak.generic_request(token["access_token"],
 										 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userID}/execute-actions-email",
@@ -451,7 +451,11 @@ module Keycloak
 			}
 
 			default_call(proc)
+		end
 
+		def self.forgot_password(userLogin, redirectURI)
+			user = JSON get_user_info(userLogin)
+			change_password(user['id'], redirectURI)
 		end
 
 		def self.get_logged_user_info
@@ -460,6 +464,28 @@ module Keycloak
 				Keycloak.generic_request(token["access_token"],
 							             Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userinfo['sub']}",
 										 nil, nil, 'GET')
+			}
+
+			default_call(proc)
+		end
+
+		def self.get_user_info(userLogin)
+			proc = lambda {|token|
+				if userLogin.index('@').nil?
+					search = {:email => userLogin}
+				else
+					search = {:username => userLogin}
+				end
+				users = JSON Keycloak.generic_request(token["access_token"],
+						      	    			      Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/",
+												      search, nil, 'GET')
+				if users.count == 0
+					raise Keycloak::UserLoginNotFound
+				else
+					Keycloak.generic_request(token["access_token"],
+											Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{users[0]['sub']}",
+											nil, nil, 'GET')
+				end
 			}
 
 			default_call(proc)
@@ -609,3 +635,5 @@ module Keycloak
 		end
 
 end
+
+require 'keycloak/exceptions'
