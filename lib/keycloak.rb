@@ -441,7 +441,7 @@ module Keycloak
 			attr_accessor :admin_user, :admin_password
 		end
 
-		def self.change_password(userID, redirectURI)
+		def self.change_password(userID, redirectURI = '')
 			proc = lambda {|token|
 				Keycloak.generic_request(token["access_token"],
 										 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userID}/execute-actions-email",
@@ -453,8 +453,8 @@ module Keycloak
 			default_call(proc)
 		end
 
-		def self.forgot_password(userLogin, redirectURI)
-			user = JSON get_user_info(userLogin)
+		def self.forgot_password(userLogin, redirectURI = '')
+			user = get_user_info(userLogin, true)
 			change_password(user['id'], redirectURI)
 		end
 
@@ -469,22 +469,39 @@ module Keycloak
 			default_call(proc)
 		end
 
-		def self.get_user_info(userLogin)
+		def self.get_user_info(userLogin, wholeWord = false)
 			proc = lambda {|token|
 				if userLogin.index('@').nil?
-					search = {:email => userLogin}
-				else
 					search = {:username => userLogin}
+				else
+					search = {:email => userLogin}
 				end
 				users = JSON Keycloak.generic_request(token["access_token"],
 						      	    			      Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/",
-												      search, nil, 'GET')
+													  search, nil, 'GET')
+				users[0]
 				if users.count == 0
 					raise Keycloak::UserLoginNotFound
 				else
-					Keycloak.generic_request(token["access_token"],
-											Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{users[0]['sub']}",
-											nil, nil, 'GET')
+					efectiveIndex = -1
+					users.each_with_index do |user, i|
+						if wholeWord
+							efectiveIndex = i if userLogin == user['username'] || userLogin == user['email']
+						else
+							efectiveIndex = 0
+						end
+						break if efectiveIndex >= 0
+					end
+
+					if efectiveIndex >= 0
+						if wholeWord
+							users[efectiveIndex]
+						else
+							users
+						end
+					else
+						raise Keycloak::UserLoginNotFound
+					end
 				end
 			}
 
