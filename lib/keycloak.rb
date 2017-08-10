@@ -166,7 +166,7 @@ module Keycloak
 				@secret = installation["credentials"]["secret"]
 				@public_key = installation["realm-public-key"]
 				@auth_server_url = installation["auth-server-url"]
-				reset_active
+				reset_active(false)
 				openid_configuration
 			else
 				raise "#{KEYCLOAK_JSON_FILE} not found."
@@ -511,6 +511,67 @@ module Keycloak
 		def self.is_logged_federation_user?
 			info = get_logged_user_info
 			info['federationLink'] != nil
+		end
+
+		def self.create_starter_user(userName, password, email, clientRolesNames, proc = nil)
+			begin
+				user = get_user_info(userName, true)
+				newUser = false
+			rescue Keycloak::UserLoginNotFound
+				newUser = true
+			rescue
+				raise
+			end
+
+			procDefault = lambda {|token|
+				userRepresentation = {:username => userName,
+										:email => email,
+										:enabled => true}
+
+				if !newUser || Keycloak.generic_request(token["access_token"],
+														Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/",
+														nil, userRepresentation, 'POST')
+
+					user = get_user_info(userName, true) if newUser
+
+					credentialRepresentation = {:type => "password",
+												:temporary => false,
+												:value => password}
+
+					if Keycloak.generic_request(token["access_token"],
+												Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{user['id']}/reset-password",
+												nil, credentialRepresentation, 'PUT')
+
+						client = JSON Keycloak.generic_request(token["access_token"],
+															   Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/clients/",
+						                                       {:clientId => Keycloak::Client.client_id}, nil, 'GET')
+
+						roles = Array.new
+						clientRolesNames.each do |r|
+							if r && !r.empty?
+								role = JSON Keycloak.generic_request(token["access_token"],
+																		Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/clients/#{client[0]['id']}/roles/#{r}",
+																		nil, nil, 'GET')
+								roles.push(role)
+							end
+						end
+
+						if roles.count > 0
+							Keycloak.generic_request(token["access_token"],
+													 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{user['id']}/role-mappings/clients/#{client[0]['id']}",
+													 nil, roles, 'POST')
+						end
+					end
+
+				end
+			}
+
+			if default_call(procDefault)
+				if !proc.nil?
+					proc.call user
+				end
+			end
+
 		end
 
 		protected
