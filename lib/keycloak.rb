@@ -9,7 +9,7 @@ module Keycloak
 
 	class << self
 		attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-		              :last_response
+		              :proc_cookie_token, :proc_external_attributes
 	end
 
 
@@ -23,26 +23,20 @@ module Keycloak
 	module Client
 
 		class << self
-			attr_reader :user, :password, :realm, :url, :client_id, :auth_server_url,
-									:secret, :configuration, :public_key, :decoded_access_token,
-									:token, :token_introspection, :decoded_refresh_token,
-									:active, :decoded_id_token, :userinfo
+			attr_reader :realm, :url, :client_id, :auth_server_url,
+						:secret, :configuration, :public_key
 
-			attr_accessor :external_attributes
 		end
 
 		KEYCLOAK_JSON_FILE = 'keycloak.json'
 
 		def self.get_token(user, password)
 			setup_module
-			reset_active
-
-			@user, @password = user, password
 
 			payload = {'client_id' => @client_id,
 					   'client_secret' => @secret,
-					   'username' => @user,
-					   'password' => @password,
+					   'username' => user,
+					   'password' => password,
 					   'grant_type' => 'password'
 					  }
 
@@ -50,24 +44,50 @@ module Keycloak
 		end
 
 		def self.get_token_by_code(code, redirect_uri)
-			reset_active
+			verify_setup
 
 			payload = {'client_id' => @client_id,
-								'client_secret' => @secret,
-								'code' => code,
-								'grant_type' => 'authorization_code',
-								'redirect_uri' => redirect_uri
-								}
+					   'client_secret' => @secret,
+					   'code' => code,
+					   'grant_type' => 'authorization_code',
+					   'redirect_uri' => redirect_uri
+					  }
+
+			mount_request_token(payload)
+		end
+
+		def self.get_token_by_refresh_token(refreshToken = nil)
+			verify_setup
+
+			refreshToken = self.token['refresh_token']
+
+			payload = {'client_id' => @client_id,
+					   'client_secret' => @secret,
+					   'refresh_token' => refreshToken,
+					   'grant_type' => 'refresh_token'
+					  }
+
+			mount_request_token(payload)
+		end
+
+		def self.get_token_by_client_credentials
+			setup_module
+
+			payload = {'client_id' => @client_id,
+					   'client_secret' => @secret,
+					   'grant_type' => 'client_credentials'
+					  }
 
 			mount_request_token(payload)
 		end
 
 		def self.get_token_introspection(refresh = false)
-			reset_active(false)
+			verify_setup
+
 			unless refresh
-				payload = {'token' => @token["access_token"]}
+				payload = {'token' => self.token["access_token"]}
 			else
-				payload = {'token' => @token["refresh_token"]}
+				payload = {'token' => self.token["refresh_token"]}
 			end
 
 			authorization = Base64.strict_encode64("#{@client_id}:#{@secret}")
@@ -80,14 +100,10 @@ module Keycloak
 				RestClient.post(@configuration['token_introspection_endpoint'], payload, header){|response, request, result|
 					case response.code
 					when 200..399
-						@token_introspection = JSON response.body
-						@active = @token_introspection['active']
-						@token_introspection
+						response.body
+
 					else
 						response.return!
-					end
-					if !@active
-						reset_active
 					end
 				}
 			end
@@ -96,16 +112,20 @@ module Keycloak
 		end
 
 		def self.url_login_redirect(redirect_uri, response_type = 'code')
+			verify_setup
+
 			p = URI.encode_www_form({:response_type => response_type, :client_id => @client_id, :redirect_uri => redirect_uri})
 			"#{@configuration['authorization_endpoint']}?#{p}"
 		end
 
 		def self.logout(redirect_uri = '')
-			if @token
+			verify_setup
+
+			if self.token
 				payload = {'client_id' => @client_id,
-									'client_secret' => @secret,
-									'refresh_token' => @token["refresh_token"]
-									}
+						   'client_secret' => @secret,
+						   'refresh_token' => self.token["refresh_token"]
+						  }
 
 				header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
@@ -119,7 +139,6 @@ module Keycloak
 					RestClient.post(final_url, payload, header){|response, request, result|
 						case response.code
 						when 200..399
-							reset_active
 							true
 						else
 							response.return!
@@ -134,7 +153,9 @@ module Keycloak
 		end
 
 		def self.get_userinfo
-			payload = {'access_token' => @token["access_token"]}
+			verify_setup
+
+			payload = {'access_token' => self.token["access_token"]}
 
 			header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
@@ -142,8 +163,7 @@ module Keycloak
 				RestClient.post(@configuration['userinfo_endpoint'], payload, header){|response, request, result|
 					case response.code
 					when 200
-						@userinfo = JSON response.body
-						@userinfo
+						response.body
 					else
 						response.return!
 					end
@@ -154,6 +174,8 @@ module Keycloak
 		end
 
 		def self.url_user_account
+			verify_setup
+
 			"#{@url}/realms/#{@realm}/account"
 		end
 
@@ -166,7 +188,6 @@ module Keycloak
 				@secret = installation["credentials"]["secret"]
 				@public_key = installation["realm-public-key"]
 				@auth_server_url = installation["auth-server-url"]
-				reset_active(false)
 				openid_configuration
 			else
 				raise "#{KEYCLOAK_JSON_FILE} not found."
@@ -174,8 +195,10 @@ module Keycloak
 		end
 
 		def self.has_role?(userRole)
+			verify_setup
+
 			if user_signed_in?
-				dt = @decoded_access_token[0]
+				dt = decoded_access_token[0]
 				dt = dt["resource_access"][@client_id]
 				if dt != nil
 					dt["roles"].each do |role|
@@ -191,21 +214,49 @@ module Keycloak
 		end
 
 		def self.user_signed_in?
+			verify_setup
+
 			begin
-				get_token_introspection['active']
-			rescue
-				@active
+				JSON(get_token_introspection)['active'] === true
+			rescue => e
+				if e.class < Keycloak::KeycloakException
+					raise
+				else
+					false
+				end
 			end
 		end
 
 		def self.get_attribute(attributeName)
-			attr = @decoded_access_token[0]
+			verify_setup
+
+			attr = decoded_access_token[0]
 			attr[attributeName]
+		end
+
+		def self.token
+			unless Keycloak.proc_cookie_token.nil?
+				JSON Keycloak.proc_cookie_token.call
+			else
+				raise Keycloak::ProcCookieTokenNotDefined
+			end
+		end
+
+		def self.external_attributes
+			unless Keycloak.proc_external_attributes.nil?
+				Keycloak.proc_external_attributes.call
+			else
+				raise Keycloak::ProcExternalAttributesNotDefined
+			end
 		end
 
 		private
 
 			KEYCLOACK_CONTROLLER_DEFAULT = 'session'
+
+			def self.verify_setup
+				get_installation if @configuration.nil?
+			end
 
 			def self.setup_module
 				Keycloak.proxy ||= ''
@@ -227,23 +278,15 @@ module Keycloak
 
 			def self.openid_configuration
 				RestClient.proxy = Keycloak.proxy unless Keycloak.proxy.empty?
-				full_url = "#{@url}/realms/#{@realm}/.well-known/openid-configuration"
+				configUrl = "#{@url}/realms/#{@realm}/.well-known/openid-configuration"
 				_request = -> do
-					RestClient.get full_url
+					RestClient.get configUrl
 				end
 				response = exec_request _request
 				if response.code == 200
 					@configuration = JSON response.body
 				else
 					response.return!
-				end
-			end
-
-			def self.reset_active(resetExternalAttributes = true)
-				@active = false
-				@userinfo = nil
-				if resetExternalAttributes
-				 @external_attributes = nil
 				end
 			end
 
@@ -254,15 +297,7 @@ module Keycloak
 					RestClient.post(@configuration['token_endpoint'], payload, header){|response, request, result|
 						case response.code
 						when 200
-							@active = true
-							@token = JSON response.body
-							@decoded_access_token = JWT.decode @token["access_token"], @public_key, false, { :algorithm => 'RS256' }
-							@decoded_refresh_token = JWT.decode @token["refresh_token"], @public_key, false, { :algorithm => 'RS256' }
-							if @token["id_token"]
-								@decoded_id_token = JWT.decode @token["id_token"], @public_key, false, { :algorithm => 'RS256' }
-							end
-							Keycloak::Admin.setup_admin(@auth_server_url, @realm, @token["access_token"])
-							@token
+							response.body
 						else
 							response.return!
 						end
@@ -272,19 +307,28 @@ module Keycloak
 				exec_request _request
 			end
 
+			def self.decoded_access_token
+				JWT.decode self.token["access_token"], @public_key, false, { :algorithm => 'RS256' }
+			end
+
+			def self.decoded_refresh_token
+				JWT.decode self.token["refresh_token"], @public_key, false, { :algorithm => 'RS256' }
+			end
+
+			def self.decoded_id_token
+				tk = self.token
+				if tk["id_token"]
+					@decoded_id_token = JWT.decode tk["id_token"], @public_key, false, { :algorithm => 'RS256' }
+				end
+			end
+
 	end
 
 	# Os recursos desse module (admin) serão utilizadas apenas por usuários que possuem as roles do client realm-management
 	module Admin
 
 		class << self
-			attr_reader :access_token, :auth_server_url, :realm
-		end
 
-		def self.setup_admin(auth_server_url, realm, access_token)
-			@auth_server_url = auth_server_url
-			@access_token = access_token
-			@realm = realm
 		end
 
 		def self.get_users( queryParameters = nil)
@@ -407,25 +451,25 @@ module Keycloak
 		# Generics methods
 
 		def self.generic_get(service, queryParameters = nil)
-			Keycloak.generic_request(@access_token, full_url(service), queryParameters, nil, 'GET')
+			Keycloak.generic_request(Keycloak::Client.token['access_token'], full_url(service), queryParameters, nil, 'GET')
 		end
 
 		def self.generic_post(service, queryParameters, bodyParameter)
-			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'POST')
+			Keycloak.generic_request(Keycloak::Client.token['access_token'], full_url(service), queryParameters, bodyParameter, 'POST')
 		end
 
 		def self.generic_put(service, queryParameters, bodyParameter)
-			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'PUT')
+			Keycloak.generic_request(Keycloak::Client.token['access_token'], full_url(service), queryParameters, bodyParameter, 'PUT')
 		end
 
 		def self.generic_delete(service, queryParameters = nil, bodyParameter = nil)
-			Keycloak.generic_request(@access_token, full_url(service), queryParameters, bodyParameter, 'DELETE')
+			Keycloak.generic_request(Keycloak::Client.token['access_token'], full_url(service), queryParameters, bodyParameter, 'DELETE')
 		end
 
 		private
 
 			def self.base_url
-				@auth_server_url + "/admin/realms/#{@realm}/"
+				Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/"
 			end
 
 			def self.full_url(service)
@@ -438,13 +482,13 @@ module Keycloak
 		include Keycloak::Admin
 
 		class << self
-			attr_accessor :admin_user, :admin_password
+			attr_accessor
 		end
 
 		def self.change_password(userID, redirectURI = '')
 			proc = lambda {|token|
 				Keycloak.generic_request(token["access_token"],
-										 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userID}/execute-actions-email",
+										 Keycloak::Admin.full_url("users/#{userID}/execute-actions-email"),
 										 {:redirect_uri => redirectURI, :client_id => Keycloak::Client.client_id},
 										 ['UPDATE_PASSWORD'],
 										 'PUT')
@@ -460,9 +504,9 @@ module Keycloak
 
 		def self.get_logged_user_info
 			proc = lambda {|token|
-			    userinfo = Keycloak::Client.get_userinfo
+			    userinfo = JSON Keycloak::Client.get_userinfo
 				Keycloak.generic_request(token["access_token"],
-							             Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{userinfo['sub']}",
+							             Keycloak::Admin.full_url("users/#{userinfo['sub']}"),
 										 nil, nil, 'GET')
 			}
 
@@ -477,7 +521,7 @@ module Keycloak
 					search = {:email => userLogin}
 				end
 				users = JSON Keycloak.generic_request(token["access_token"],
-						      	    			      Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/",
+						      	    			      Keycloak::Admin.full_url("users/"),
 													  search, nil, 'GET')
 				users[0]
 				if users.count == 0
@@ -529,7 +573,7 @@ module Keycloak
 										:enabled => true}
 
 				if !newUser || Keycloak.generic_request(token["access_token"],
-														Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/",
+														Keycloak::Admin.full_url("users/"),
 														nil, userRepresentation, 'POST')
 
 					user = get_user_info(userName, true) if newUser
@@ -539,18 +583,18 @@ module Keycloak
 												:value => password}
 
 					if Keycloak.generic_request(token["access_token"],
-												Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{user['id']}/reset-password",
+												Keycloak::Admin.full_url("users/#{user['id']}/reset-password"),
 												nil, credentialRepresentation, 'PUT')
 
 						client = JSON Keycloak.generic_request(token["access_token"],
-															   Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/clients/",
+															   Keycloak::Admin.full_url("clients/"),
 						                                       {:clientId => Keycloak::Client.client_id}, nil, 'GET')
 
 						roles = Array.new
 						clientRolesNames.each do |r|
 							if r && !r.empty?
 								role = JSON Keycloak.generic_request(token["access_token"],
-																		Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/clients/#{client[0]['id']}/roles/#{r}",
+																		Keycloak::Admin.full_url("clients/#{client[0]['id']}/roles/#{r}"),
 																		nil, nil, 'GET')
 								roles.push(role)
 							end
@@ -558,7 +602,7 @@ module Keycloak
 
 						if roles.count > 0
 							Keycloak.generic_request(token["access_token"],
-													 Keycloak::Client.auth_server_url + "/admin/realms/#{Keycloak::Client.realm}/users/#{user['id']}/role-mappings/clients/#{client[0]['id']}",
+													 Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/clients/#{client[0]['id']}"),
 													 nil, roles, 'POST')
 						end
 					end
@@ -584,11 +628,9 @@ module Keycloak
 					Keycloak::Client.get_installation
 
 					payload = {'client_id' => Keycloak::Client.client_id,
-							'client_secret' => Keycloak::Client.secret,
-							'username' => @admin_user,
-							'password' => @admin_password,
-							'grant_type' => 'password'
-							}
+							   'client_secret' => Keycloak::Client.secret,
+							   'grant_type' => 'client_credentials'
+							  }
 
 					header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
@@ -633,6 +675,7 @@ module Keycloak
 	private
 
 		def self.generic_request(accessToken, uri, queryParameters, bodyParameter, method)
+			Keycloak::Client.verify_setup
 			final_url = uri
 
 			header = {'Content-Type' => 'application/x-www-form-urlencoded',
@@ -689,20 +732,19 @@ module Keycloak
 		end
 
 		def self.rescue_response(response)
-			@last_response = response
-			case @last_response.code
+			case response.code
 			when 200..399
-				if @last_response.body.empty?
+				if response.body.empty?
 					true
 				else
-					@last_response.body
+					response.body
 				end
 			else
 				if Keycloak.explode_exception
-					@last_response.return!
+					response.return!
 				else
 					begin
-						@last_response.return!
+						response.return!
 					rescue RestClient::ExceptionWithResponse => err
 						err.response
 					rescue Exception => e

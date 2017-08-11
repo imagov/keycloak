@@ -1,3 +1,6 @@
 module Keycloak
-    class UserLoginNotFound < StandardError; end
+    class KeycloakException < StandardError; end
+    class UserLoginNotFound < KeycloakException; end
+    class ProcCookieTokenNotDefined < KeycloakException; end
+    class ProcExternalAttributesNotDefined < KeycloakException; end
 end

@@ -8,10 +8,7 @@ class InitializerGenerator < Rails::Generators::Base
 			 # If true, then all request exception will explode in application (this is the default value)
 			 Keycloak.generate_request_exception = #{generate_request_exception}
 			 # controller that manage the user session
-			 Keycloak.keycloak_controller = 'session'
-			 # internal user for admin tasks
-			 Keycloak::Internal.admin_user = ''
-			 Keycloak::Internal.admin_password = ''"
+			 Keycloak.keycloak_controller = 'session'"
     end
   end
 end
