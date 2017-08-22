@@ -56,10 +56,10 @@ module Keycloak
 			mount_request_token(payload)
 		end
 
-		def self.get_token_by_refresh_token(refreshToken = nil)
+		def self.get_token_by_refresh_token(refreshToken = '')
 			verify_setup
 
-			refreshToken = self.token['refresh_token']
+			refreshToken = self.token['refresh_token'] if refreshToken.empty?
 
 			payload = {'client_id' => @client_id,
 					   'client_secret' => @secret,
@@ -81,14 +81,12 @@ module Keycloak
 			mount_request_token(payload)
 		end
 
-		def self.get_token_introspection(refresh = false)
+		def self.get_token_introspection(token = '')
 			verify_setup
 
-			unless refresh
-				payload = {'token' => self.token["access_token"]}
-			else
-				payload = {'token' => self.token["refresh_token"]}
-			end
+			token = self.token["access_token"] if token.empty?
+
+			payload = {'token' => token}
 
 			authorization = Base64.strict_encode64("#{@client_id}:#{@secret}")
 			authorization = "Basic #{authorization}"
@@ -118,13 +116,16 @@ module Keycloak
 			"#{@configuration['authorization_endpoint']}?#{p}"
 		end
 
-		def self.logout(redirect_uri = '')
+		def self.logout(redirect_uri = '', refresh_token = '')
 			verify_setup
 
-			if self.token
+			if self.token || !refresh_token.empty?
+
+				refresh_token = self.token['refresh_token'] if refresh_token.empty?
+
 				payload = {'client_id' => @client_id,
 						   'client_secret' => @secret,
-						   'refresh_token' => self.token["refresh_token"]
+						   'refresh_token' => refresh_token
 						  }
 
 				header = {'Content-Type' => 'application/x-www-form-urlencoded'}
@@ -152,10 +153,12 @@ module Keycloak
 			end
 		end
 
-		def self.get_userinfo
+		def self.get_userinfo(accessToken = '')
 			verify_setup
 
-			payload = {'access_token' => self.token["access_token"]}
+			accessToken = self.token["access_token"] if accessToken.empty?
+
+			payload = {'access_token' => accessToken}
 
 			header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
@@ -179,26 +182,11 @@ module Keycloak
 			"#{@url}/realms/#{@realm}/account"
 		end
 
-		def self.get_installation
-			if File.exists?(KEYCLOAK_JSON_FILE)
-				installation = JSON File.read(KEYCLOAK_JSON_FILE)
-				@realm = installation["realm"]
-				@url = installation["auth-server-url"]
-				@client_id = installation["resource"]
-				@secret = installation["credentials"]["secret"]
-				@public_key = installation["realm-public-key"]
-				@auth_server_url = installation["auth-server-url"]
-				openid_configuration
-			else
-				raise "#{KEYCLOAK_JSON_FILE} not found."
-			end
-		end
-
-		def self.has_role?(userRole)
+		def self.has_role?(userRole, accessToken = '')
 			verify_setup
 
-			if user_signed_in?
-				dt = decoded_access_token[0]
+			if user_signed_in?(accessToken)
+				dt = decoded_access_token(accessToken)[0]
 				dt = dt["resource_access"][@client_id]
 				if dt != nil
 					dt["roles"].each do |role|
@@ -213,11 +201,11 @@ module Keycloak
 			end
 		end
 
-		def self.user_signed_in?
+		def self.user_signed_in?(accessToken = '')
 			verify_setup
 
 			begin
-				JSON(get_token_introspection)['active'] === true
+				JSON(get_token_introspection(accessToken))['active'] === true
 			rescue => e
 				if e.class < Keycloak::KeycloakException
 					raise
@@ -227,10 +215,10 @@ module Keycloak
 			end
 		end
 
-		def self.get_attribute(attributeName)
+		def self.get_attribute(attributeName, accessToken = '')
 			verify_setup
 
-			attr = decoded_access_token[0]
+			attr = decoded_access_token(accessToken)[0]
 			attr[attributeName]
 		end
 
@@ -253,6 +241,21 @@ module Keycloak
 		private
 
 			KEYCLOACK_CONTROLLER_DEFAULT = 'session'
+
+			def self.get_installation
+				if File.exists?(KEYCLOAK_JSON_FILE)
+					installation = JSON File.read(KEYCLOAK_JSON_FILE)
+					@realm = installation["realm"]
+					@url = installation["auth-server-url"]
+					@client_id = installation["resource"]
+					@secret = installation["credentials"]["secret"]
+					@public_key = installation["realm-public-key"]
+					@auth_server_url = installation["auth-server-url"]
+					openid_configuration
+				else
+					raise "#{KEYCLOAK_JSON_FILE} not found."
+				end
+			end
 
 			def self.verify_setup
 				get_installation if @configuration.nil?
@@ -307,18 +310,21 @@ module Keycloak
 				exec_request _request
 			end
 
-			def self.decoded_access_token
-				JWT.decode self.token["access_token"], @public_key, false, { :algorithm => 'RS256' }
+			def self.decoded_access_token(accessToken = '')
+				accessToken = self.token["access_token"] if accessToken.empty?
+				JWT.decode accessToken, @public_key, false, { :algorithm => 'RS256' }
 			end
 
-			def self.decoded_refresh_token
-				JWT.decode self.token["refresh_token"], @public_key, false, { :algorithm => 'RS256' }
+			def self.decoded_refresh_token(refreshToken = '')
+				refreshToken = self.token["access_token"] if refreshToken.empty?
+				JWT.decode refreshToken, @public_key, false, { :algorithm => 'RS256' }
 			end
 
-			def self.decoded_id_token
+			def self.decoded_id_token(idToken = '')
 				tk = self.token
-				if tk["id_token"]
-					@decoded_id_token = JWT.decode tk["id_token"], @public_key, false, { :algorithm => 'RS256' }
+				idToken = tk["id_token"] if idToken.empty?
+				if idToken
+					@decoded_id_token = JWT.decode idToken, @public_key, false, { :algorithm => 'RS256' }
 				end
 			end
 
