@@ -64,11 +64,14 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_client_credentials
+    def self.get_token_by_client_credentials(client_id = '', secret = '')
       setup_module
 
-      payload = { 'client_id' => @client_id,
-                  'client_secret' => @secret,
+      client_id = @client_id if client_id.empty?
+      secret = @secret if secret.empty?
+
+      payload = { 'client_id' => client_id,
+                  'client_secret' => secret,
                   'grant_type' => 'client_credentials' }
 
       mount_request_token(payload)
