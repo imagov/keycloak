@@ -51,14 +51,14 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_refresh_token(refreshToken = '')
+    def self.get_token_by_refresh_token(refresh_token = '')
       verify_setup
 
-      refreshToken = self.token['refresh_token'] if refreshToken.empty?
+      refresh_token = self.token['refresh_token'] if refresh_token.empty?
 
       payload = { 'client_id' => @client_id,
                   'client_secret' => @secret,
-                  'refresh_token' => refreshToken,
+                  'refresh_token' => refresh_token,
                   'grant_type' => 'refresh_token' }
 
       mount_request_token(payload)
@@ -149,12 +149,12 @@ module Keycloak
       end
     end
 
-    def self.get_userinfo(accessToken = '')
+    def self.get_userinfo(access_token = '')
       verify_setup
 
-      accessToken = self.token["access_token"] if accessToken.empty?
+      access_token = self.token["access_token"] if access_token.empty?
 
-      payload = { 'access_token' => accessToken }
+      payload = { 'access_token' => access_token }
 
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
@@ -178,15 +178,15 @@ module Keycloak
       "#{@url}/realms/#{@realm}/account"
     end
 
-    def self.has_role?(userRole, accessToken = '')
+    def self.has_role?(user_role, access_token = '')
       verify_setup
 
-      if user_signed_in?(accessToken)
-        dt = decoded_access_token(accessToken)[0]
+      if user_signed_in?(access_token)
+        dt = decoded_access_token(access_token)[0]
         dt = dt["resource_access"][@client_id]
         if dt != nil
           dt["roles"].each do |role|
-            return true if role.to_s == userRole.to_s
+            return true if role.to_s == user_role.to_s
           end
           false
         else
@@ -197,11 +197,11 @@ module Keycloak
       end
     end
 
-    def self.user_signed_in?(accessToken = '')
+    def self.user_signed_in?(access_token = '')
       verify_setup
 
       begin
-        JSON(get_token_introspection(accessToken))['active'] === true
+        JSON(get_token_introspection(access_token))['active'] === true
       rescue => e
         if e.class < Keycloak::KeycloakException
           raise
@@ -211,10 +211,10 @@ module Keycloak
       end
     end
 
-    def self.get_attribute(attributeName, accessToken = '')
+    def self.get_attribute(attributeName, access_token = '')
       verify_setup
 
-      attr = decoded_access_token(accessToken)[0]
+      attr = decoded_access_token(access_token)[0]
       attr[attributeName]
     end
 
@@ -306,14 +306,14 @@ module Keycloak
         exec_request _request
       end
 
-      def self.decoded_access_token(accessToken = '')
-        accessToken = self.token["access_token"] if accessToken.empty?
-        JWT.decode accessToken, @public_key, false, { :algorithm => 'RS256' }
+      def self.decoded_access_token(access_token = '')
+        access_token = self.token["access_token"] if access_token.empty?
+        JWT.decode access_token, @public_key, false, { :algorithm => 'RS256' }
       end
 
-      def self.decoded_refresh_token(refreshToken = '')
-        refreshToken = self.token["access_token"] if refreshToken.empty?
-        JWT.decode refreshToken, @public_key, false, { :algorithm => 'RS256' }
+      def self.decoded_refresh_token(refresh_token = '')
+        refresh_token = self.token["access_token"] if refresh_token.empty?
+        JWT.decode refresh_token, @public_key, false, { :algorithm => 'RS256' }
       end
 
       def self.decoded_id_token(idToken = '')
@@ -331,97 +331,97 @@ module Keycloak
     class << self
     end
 
-    def self.get_users(queryParameters = nil, accessToken = nil)
-      generic_get("users/", queryParameters, accessToken)
+    def self.get_users(query_parameters = nil, access_token = nil)
+      generic_get("users/", query_parameters, access_token)
     end
 
-    def self.create_user(userRepresentation, accessToken = nil)
-      generic_post("users/", nil, userRepresentation, accessToken)
+    def self.create_user(user_representation, access_token = nil)
+      generic_post("users/", nil, user_representation, access_token)
     end
 
-    def self.count_users(accessToken = nil)
-      generic_get("users/count/", nil, accessToken)
+    def self.count_users(access_token = nil)
+      generic_get("users/count/", nil, access_token)
     end
 
-    def self.get_user(id, accessToken = nil)
-      generic_get("users/#{id}", nil, accessToken)
+    def self.get_user(id, access_token = nil)
+      generic_get("users/#{id}", nil, access_token)
     end
 
-    def self.update_user(id, userRepresentation, accessToken = nil)
-      generic_put("users/#{id}", nil, userRepresentation, accessToken)
+    def self.update_user(id, user_representation, access_token = nil)
+      generic_put("users/#{id}", nil, user_representation, access_token)
     end
 
-    def self.delete_user(id, accessToken = nil)
-      generic_delete("users/#{id}", nil, nil, accessToken)
+    def self.delete_user(id, access_token = nil)
+      generic_delete("users/#{id}", nil, nil, access_token)
     end
 
-    def self.revoke_consent_user(id, clientID = nil, accessToken = nil)
-      if clientID.nil?
-        clientID = Keycloak::Client.client_id
+    def self.revoke_consent_user(id, client_id = nil, access_token = nil)
+      if client_id.nil?
+        client_id = Keycloak::Client.client_id
       end
-      generic_delete("users/#{id}/consents/#{clientID}", nil, nil, accessToken)
+      generic_delete("users/#{id}/consents/#{client_id}", nil, nil, access_token)
     end
 
-    def self.update_account_email(id, actions, redirectUri = '', clientID = nil, accessToken = nil)
-      if clientID.nil?
-        clientID = Keycloak::Client.client_id
+    def self.update_account_email(id, actions, redirect_uri = '', client_id = nil, access_token = nil)
+      if client_id.nil?
+        client_id = Keycloak::Client.client_id
       end
-      generic_put("users/#{id}/execute-actions-email", {:redirect_uri => redirectUri, :client_id => clientID}, actions, accessToken)
+      generic_put("users/#{id}/execute-actions-email", {:redirect_uri => redirect_uri, :client_id => client_id}, actions, access_token)
     end
 
-    def self.get_role_mappings(id, accessToken = nil)
-      generic_get("users/#{id}/role-mappings", nil, accessToken)
+    def self.get_role_mappings(id, access_token = nil)
+      generic_get("users/#{id}/role-mappings", nil, access_token)
     end
 
-    def self.get_clients(queryParameters = nil, accessToken = nil)
-      generic_get("clients/", queryParameters, accessToken)
+    def self.get_clients(query_parameters = nil, access_token = nil)
+      generic_get("clients/", query_parameters, access_token)
     end
 
-    def self.get_all_roles_client(id, accessToken = nil)
-      generic_get("clients/#{id}/roles", nil, accessToken)
+    def self.get_all_roles_client(id, access_token = nil)
+      generic_get("clients/#{id}/roles", nil, access_token)
     end
 
-    def self.get_roles_client_by_name(id, roleName, accessToken = nil)
-      generic_get("clients/#{id}/roles/#{roleName}", nil, accessToken)
+    def self.get_roles_client_by_name(id, role_name, access_token = nil)
+      generic_get("clients/#{id}/roles/#{role_name}", nil, access_token)
     end
 
-    def self.add_client_level_roles_to_user(id, client, roleRepresentation, accessToken = nil)
-      generic_post("users/#{id}/role-mappings/clients/#{client}", nil, roleRepresentation, accessToken)
+    def self.add_client_level_roles_to_user(id, client, role_representation, access_token = nil)
+      generic_post("users/#{id}/role-mappings/clients/#{client}", nil, role_representation, access_token)
     end
 
-    def self.delete_client_level_roles_from_user(id, client, roleRepresentation, accessToken = nil)
-      generic_delete("users/#{id}/role-mappings/clients/#{client}", nil, roleRepresentation, accessToken)
+    def self.delete_client_level_roles_from_user(id, client, role_representation, access_token = nil)
+      generic_delete("users/#{id}/role-mappings/clients/#{client}", nil, role_representation, access_token)
     end
 
-    def self.get_client_level_role_for_user_and_app(id, client, accessToken = nil)
-      generic_get("users/#{id}/role-mappings/clients/#{client}", nil, accessToken)
+    def self.get_client_level_role_for_user_and_app(id, client, access_token = nil)
+      generic_get("users/#{id}/role-mappings/clients/#{client}", nil, access_token)
     end
 
-    def self.update_effective_user_roles(id, clientID, rolesNames, accessToken = nil)
-      client = JSON get_clients({ clientId: clientID })
+    def self.update_effective_user_roles(id, client_id, rolesNames, access_token = nil)
+      client = JSON get_clients({ clientId: client_id })
 
-      userRoles = JSON get_client_level_role_for_user_and_app(id, client[0]['id'], accessToken)
+      user_roles = JSON get_client_level_role_for_user_and_app(id, client[0]['id'], access_token)
 
       roles = Array.new
       # Include new role
       rolesNames.each do |r|
         if r && !r.empty?
           found = false
-          userRoles.each do |ur|
+          user_roles.each do |ur|
             found = ur['name'] == r
             break if found
             found = false
           end
           if !found
-            role = JSON get_roles_client_by_name(client[0]['id'], r, accessToken)
+            role = JSON get_roles_client_by_name(client[0]['id'], r, access_token)
             roles.push(role)
           end
         end
       end
 
-      garbageRoles = Array.new
+      garbage_roles = Array.new
       # Exclude old role
-      userRoles.each do |ur|
+      user_roles.each do |ur|
         found = false
         rolesNames.each do |r|
           if r && !r.empty?
@@ -431,43 +431,43 @@ module Keycloak
           end
         end
         if !found
-          garbageRoles.push(ur)
+          garbage_roles.push(ur)
         end
       end
 
-      if garbageRoles.count > 0
-        delete_client_level_roles_from_user(id, client[0]['id'], garbageRoles, accessToken)
+      if garbage_roles.count > 0
+        delete_client_level_roles_from_user(id, client[0]['id'], garbage_roles, access_token)
       end
 
       if roles.count > 0
-        add_client_level_roles_to_user(id, client[0]['id'], roles, accessToken)
+        add_client_level_roles_to_user(id, client[0]['id'], roles, access_token)
       end
     end
 
-    def self.reset_password(id, credentialRepresentation, accessToken = nil)
-      generic_put("users/#{id}/reset-password", nil, credentialRepresentation, accessToken)
+    def self.reset_password(id, credentialRepresentation, access_token = nil)
+      generic_put("users/#{id}/reset-password", nil, credentialRepresentation, access_token)
     end
 
-    def self.get_effective_client_level_role_composite_user(id, client, accessToken = nil)
-      generic_get("users/#{id}/role-mappings/clients/#{client}/composite", nil, accessToken)
+    def self.get_effective_client_level_role_composite_user(id, client, access_token = nil)
+      generic_get("users/#{id}/role-mappings/clients/#{client}/composite", nil, access_token)
     end
 
     # Generics methods
 
-    def self.generic_get(service, queryParameters = nil, accessToken = nil)
-      Keycloak.generic_request(effective_access_token(accessToken), full_url(service), queryParameters, nil, 'GET')
+    def self.generic_get(service, query_parameters = nil, access_token = nil)
+      Keycloak.generic_request(effective_access_token(access_token), full_url(service), query_parameters, nil, 'GET')
     end
 
-    def self.generic_post(service, queryParameters, bodyParameter, accessToken = nil)
-      Keycloak.generic_request(effective_access_token(accessToken), full_url(service), queryParameters, bodyParameter, 'POST')
+    def self.generic_post(service, query_parameters, body_parameter, access_token = nil)
+      Keycloak.generic_request(effective_access_token(access_token), full_url(service), query_parameters, body_parameter, 'POST')
     end
 
-    def self.generic_put(service, queryParameters, bodyParameter, accessToken = nil)
-      Keycloak.generic_request(effective_access_token(accessToken), full_url(service), queryParameters, bodyParameter, 'PUT')
+    def self.generic_put(service, query_parameters, body_parameter, access_token = nil)
+      Keycloak.generic_request(effective_access_token(access_token), full_url(service), query_parameters, body_parameter, 'PUT')
     end
 
-    def self.generic_delete(service, queryParameters = nil, bodyParameter = nil, accessToken = nil)
-      Keycloak.generic_request(effective_access_token(accessToken), full_url(service), queryParameters, bodyParameter, 'DELETE')
+    def self.generic_delete(service, query_parameters = nil, body_parameter = nil, access_token = nil)
+      Keycloak.generic_request(effective_access_token(access_token), full_url(service), query_parameters, body_parameter, 'DELETE')
     end
 
     private
@@ -496,19 +496,19 @@ module Keycloak
     class << self
     end
 
-    def self.get_users(queryParameters = nil)
+    def self.get_users(query_parameters = nil)
       proc = lambda {|token|
-        Keycloak::Admin.get_users(queryParameters, token["access_token"])
+        Keycloak::Admin.get_users(query_parameters, token["access_token"])
       }
 
       default_call(proc)
     end
 
-    def self.change_password(userID, redirectURI = '')
+    def self.change_password(user_id, redirect_uri = '')
       proc = lambda {|token|
         Keycloak.generic_request(token["access_token"],
-                                 Keycloak::Admin.full_url("users/#{userID}/execute-actions-email"),
-                                 {:redirect_uri => redirectURI, :client_id => Keycloak::Client.client_id},
+                                 Keycloak::Admin.full_url("users/#{user_id}/execute-actions-email"),
+                                 {:redirect_uri => redirect_uri, :client_id => Keycloak::Client.client_id},
                                  ['UPDATE_PASSWORD'],
                                  'PUT')
       }
@@ -516,9 +516,9 @@ module Keycloak
       default_call(proc)
     end
 
-    def self.forgot_password(userLogin, redirectURI = '')
-      user = get_user_info(userLogin, true)
-      change_password(user['id'], redirectURI)
+    def self.forgot_password(user_login, redirect_uri = '')
+      user = get_user_info(user_login, true)
+      change_password(user['id'], redirect_uri)
     end
 
     def self.get_logged_user_info
@@ -532,12 +532,12 @@ module Keycloak
       default_call(proc)
     end
 
-    def self.get_user_info(userLogin, wholeWord = false)
+    def self.get_user_info(user_login, whole_word = false)
       proc = lambda { |token|
-        if userLogin.index('@').nil?
-          search = {:username => userLogin}
+        if user_login.index('@').nil?
+          search = {:username => user_login}
         else
-          search = {:email => userLogin}
+          search = {:email => user_login}
         end
         users = JSON Keycloak.generic_request(token["access_token"],
                                               Keycloak::Admin.full_url("users/"),
@@ -548,8 +548,8 @@ module Keycloak
         else
           efective_index = -1
           users.each_with_index do |user, i|
-            if wholeWord
-              efective_index = i if userLogin == user['username'] || userLogin == user['email']
+            if whole_word
+              efective_index = i if user_login == user['username'] || user_login == user['email']
             else
               efective_index = 0
             end
@@ -557,7 +557,7 @@ module Keycloak
           end
 
           if efective_index >= 0
-            if wholeWord
+            if whole_word
               users[efective_index]
             else
               users
@@ -576,9 +576,9 @@ module Keycloak
       info['federationLink'] != nil
     end
 
-    def self.create_starter_user(userName, password, email, clientRolesNames, proc = nil)
+    def self.create_starter_user(username, password, email, client_roles_names, proc = nil)
       begin
-        user = get_user_info(userName, true)
+        user = get_user_info(username, true)
         newUser = false
       rescue Keycloak::UserLoginNotFound
         newUser = true
@@ -587,7 +587,7 @@ module Keycloak
       end
 
       proc_default = lambda { |token|
-        user_representation = { username: userName,
+        user_representation = { username: username,
                                 email: email,
                                 enabled: true }
 
@@ -595,7 +595,7 @@ module Keycloak
                                                 Keycloak::Admin.full_url("users/"),
                                                 nil, user_representation, 'POST')
 
-          user = get_user_info(userName, true) if newUser
+          user = get_user_info(username, true) if newUser
 
           credential_representation = { type: "password",
                                         temporary: false,
@@ -610,7 +610,7 @@ module Keycloak
                                                    { clientId: Keycloak::Client.client_id }, nil, 'GET')
 
             roles = []
-            clientRolesNames.each do |r|
+            client_roles_names.each do |r|
               if r.present?
                 role = JSON Keycloak.generic_request(token["access_token"],
                                                      Keycloak::Admin.full_url("clients/#{client[0]['id']}/roles/#{r}"),
@@ -646,20 +646,20 @@ module Keycloak
       default_call(proc)
     end
 
-    def self.get_client_user_roles(userID)
+    def self.get_client_user_roles(user_id)
       proc = lambda {|token|
         client = JSON Keycloak::Admin.get_clients({ clientId: Keycloak::Client.client_id }, token["access_token"])
-        Keycloak::Admin.get_effective_client_level_role_composite_user(userID, client[0]['id'], token["access_token"])
+        Keycloak::Admin.get_effective_client_level_role_composite_user(user_id, client[0]['id'], token["access_token"])
       }
 
       default_call(proc)
     end
 
-    def self.has_role?(userID, userRole)
-      roles = JSON get_client_user_roles(userID)
+    def self.has_role?(user_id, user_role)
+      roles = JSON get_client_user_roles(user_id)
       if !roles.nil?
         roles.each do |role|
-          return true if role['name'].to_s == userRole.to_s
+          return true if role['name'].to_s == user_role.to_s
         end
         false
       else
@@ -721,15 +721,15 @@ module Keycloak
 
   private
 
-    def self.generic_request(accessToken, uri, queryParameters, bodyParameter, method)
+    def self.generic_request(access_token, uri, query_parameters, body_parameter, method)
       Keycloak::Client.verify_setup
       final_url = uri
 
       header = {'Content-Type' => 'application/x-www-form-urlencoded',
-                'Authorization' => "Bearer #{accessToken}"}
+                'Authorization' => "Bearer #{access_token}"}
 
-      if queryParameters
-        parameters = URI.encode_www_form(queryParameters)
+      if query_parameters
+        parameters = URI.encode_www_form(query_parameters)
         final_url = final_url << '?' << parameters
       end
 
@@ -742,7 +742,7 @@ module Keycloak
         end
       when 'POST', 'PUT'
         header["Content-Type"] = 'application/json'
-        parameters = JSON.generate bodyParameter
+        parameters = JSON.generate body_parameter
         _request = -> do
           case method.upcase
           when 'POST'
@@ -757,9 +757,9 @@ module Keycloak
         end
       when 'DELETE'
         _request = -> do
-          if bodyParameter
+          if body_parameter
             header["Content-Type"] = 'application/json'
-            parameters = JSON.generate bodyParameter
+            parameters = JSON.generate body_parameter
             RestClient::Request.execute(method: :delete, url: final_url,
                           payload: parameters, headers: header) { |response, request, result|
               rescue_response(response)
