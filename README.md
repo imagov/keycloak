@@ -88,9 +88,9 @@ end
 <b>Observação:</b> Os atributos `Keycloak.proc_cookie_token` e `Keycloak.proc_external_attributes` podem ser definidos no `initialize` do controler `ApplicationController`.
 
 
-### Client
+### Keycloak::Client
 
-Esse módulo possui os métodos que representam as APIs de <b>endpoints</b>. Esses serviços são fundamentais para a criação e atualização de tokens, efetuação de login e logout, e, também para a obtenção de informações sintéticas de um usuário logado. O que habilita a gem a fazer uso de todos esses serviços é o arquivo de instalação do client citado anteriormente.
+O módulo `Keycloak::Client` possui os métodos que representam os serviços de <b>endpoints</b>. Esses serviços são fundamentais para a criação e atualização de tokens, efetuação de login e logout, e, também para a obtenção de informações sintéticas de um usuário logado. O que habilita a gem a fazer uso de todos esses serviços é o arquivo de instalação do client citado anteriormente.
 
 Vamos ao detalhamento de cada um desses métodos:
 
@@ -191,3 +191,137 @@ Keycloak::Client.external_attributes
 ```
 
 Quando implementado o método `Keycloak.proc_external_attributes`, o método `external_attributes` o retornará. A finalidade desse método é retornar os atributos específicos da aplicação não mapeados no Keycloak.
+
+
+### Keycloak::Admin
+
+O módulo `Keycloak::Admin`disponibiliza métodos que representam as [REST APIs do Keycloak](http://www.keycloak.org/docs-api/3.2/rest-api/index.html). Para a utilização dessas APIs, será necessário um `access_token` ativo, ou seja, a autenticação deverá ocorrer antes da utilização dos métodos para que um token válido seja utilizado como credencial. Caso o `access_token` não seja informado, então a gem utilizará o `access_token` do cookie. O usuário autenticado deverá ter o `role` do respectivo serviço invocado - roles do client `realm-management`, que representa o gerênciamento do reino.
+
+Segue abaixo a lista dos métodos. O parâmetro de rota `{realm}` de todas as APIs será obtido do arquivo de instalação `keycloak.json`:
+
+
+```ruby
+# GET /admin/realms/{realm}/users
+Keycloak::Admin.get_users(query_parameters = nil, access_token = nil)
+```
+
+`get_users` retorna uma lista de usuários, filtrada de acordo com o hash de parâmetros passado em `query_parameters`.
+
+
+```ruby
+# POST /admin/realms/{realm}/users
+Keycloak::Admin.create_user(user_representation, access_token = nil)
+```
+
+`create_user` cria um novo usuário no Keycloak. O parâmetro `user_representation` deve ser um hash conforme o [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation)  do Keycloak. O retorno deste método será `true` para o caso de sucesso.
+
+
+```ruby
+# GET /admin/realms/{realm}/users/count
+Keycloak::Admin.count_users(access_token = nil)
+```
+
+`count_users` retorna a quantidade de usuários do reino.
+
+
+```ruby
+# GET /admin/realms/{realm}/users/{id}
+Keycloak::Admin.get_user(id, access_token = nil)
+```
+
+`get_user` retorna a representação do usuário identificado pelo parâmetro `id` - que é o <b>ID</b> criado pelo Keycloak ao criar um novo usuário.
+
+
+```ruby
+# PUT /admin/realms/{realm}/users/{id}
+Keycloak::Admin.update_user(id, user_representation, access_token = nil)
+```
+
+`update_user` atualiza o cadastro do usuário identificado pelo `id` - que é o <b>ID</b> criado pelo Keycloak ao criar um novo usuário. No parâmetro `user_representation` deverá ser uma hash com os campos que serão alterados, respeitando o [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) do Keycloak. O retorno deste método será `true` para o caso de sucesso.
+
+
+```ruby
+# DELETE /admin/realms/{realm}/users/{id}
+Keycloak::Admin.delete_user(id, access_token = nil)
+```
+
+`delete_user` exclui o cadastro do usuário identificado pelo `id` - que é o <b>ID</b> criado pelo Keycloak ao criar um novo usuário. O retorno deste método será `true` para o caso de sucesso.
+
+
+```ruby
+# DELETE /admin/realms/{realm}/users/{id}/consents/{client}
+Keycloak::Admin.revoke_consent_user(id, client_id = nil, access_token = nil)
+```
+
+`revoke_consent_user` revoga os tokens de um usuário identificado pelo `id` - que é o <b>ID</b> criado pelo Keycloak ao criar um novo usuário - no client identificado pelo parâmetro `client_id`.
+
+
+```ruby
+# PUT /admin/realms/{realm}/users/{id}/execute-actions-email
+Keycloak::Admin.update_account_email(id, actions, redirect_uri = '', client_id = nil, access_token = nil)
+```
+
+`update_account_email` envia um e-mail de atualização da conta para o usuário representado pelo parâmetro `id`. O email contém um link que o usuário poderá clicar para executar um conjunto de ações representados pelo parâmetro `actions` - que aguarda um `array` de [ações definidas pelo Keycloak](http://www.keycloak.org/docs/3.2/server_admin/topics/users/required-actions.html). Um exemplo de valor que pode ser passado para o parâmetro `actions` é `['UPDATE_PASSWORD']`, que indica que a ação que o usuário deverá tomar ao clicar o link do e-mail é de alterar a sua senha. No parâmetro `redirect_uri`, caso necessário, deverá ser passada uma <b>url</b> para que, ao término do envio do e-mail, a aplicação seja redirecionada. O parâmetro `client_id` deverá ser informado caso o Client responsável pela as ações que deverão ser executadas não seja o mesmo do arquivo de instalação `keycloak.json`.
+
+
+```ruby
+# GET /admin/realms/{realm}/users/{id}/role-mappings
+Keycloak::Admin.get_role_mappings(id, access_token = nil)
+```
+
+`get_role_mappings` retorna todas as <b>Role Mappings</b> do reino atribuídas ao usuário identificado pelo parâmetro `id`, independentemente do Client.
+
+
+```ruby
+# GET /admin/realms/{realm}/clients
+Keycloak::Admin.get_clients(query_parameters = nil, access_token = nil)
+```
+
+`get_clients` retorna uma lista de [ClientRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_clientrepresentation) Clients pertencentes ao reino. O parâmetro `query_parameters` espera um hash com os atributos `clientId` - caso deseje que a lista seja filtrada pelo `client_id` - e `viewableOnly` - para filtrar se os Clients de administração do Keycloak serão ou não retornados na lista.
+
+
+```ruby
+# GET /admin/realms/{realm}/clients/{id}/roles
+Keycloak::Admin.get_all_roles_client(id, access_token = nil)
+```
+
+`get_all_roles_client` retorna uma lista de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) com todos os <b>roles</b> do client identidicado pelo parâmetro `id` - deve ser passado nesse parâmetro o `ID` do Client e não o `client_id`.
+
+
+```ruby
+# GET /admin/realms/{realm}/clients/{id}/roles/{role-name}
+Keycloak::Admin.get_roles_client_by_name(id, role_name, access_token = nil)
+```
+
+`get_roles_client_by_name` retorna a [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) do role identificado pelo parâmetro `role_name` - que é o nome do role.
+
+
+```ruby
+# POST /admin/realms/{realm}/users/{id}/role-mappings/clients/{client}
+Keycloak::Admin.add_client_level_roles_to_user(id, client, role_representation, access_token = nil)
+```
+
+`add_client_level_roles_to_user` insere um <b>role</b> do Client (representado pelo parâmetro `client`) ao usuário representado pelo parâmetro `id`. O parâmetro `role_representation` deverá receber um `array` de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) que serão inseridos no usuário. Em caso de sucesso, o retorno será `true`.
+
+
+```ruby
+# DELETE /admin/realms/{realm}/users/{id}/role-mappings/clients/{client}
+Keycloak::Admin.delete_client_level_roles_from_user(id, client, role_representation, access_token = nil)
+```
+
+`delete_client_level_roles_from_user` exclui um <b>Client-Role</b> (representado pelo parâmetro `client`) do usuário representado pelo parâmetro `id`. O parâmetro `role_representation` deverá receber um `array` de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) que serão retirados do usuário. Em caso de sucesso, o retorno será `true`.
+
+
+```ruby
+# GET /admin/realms/{realm}/users/{id}/role-mappings/clients/{client}
+Keycloak::Admin.get_client_level_role_for_user_and_app(id, client, access_token = nil)
+```
+
+`get_client_level_role_for_user_and_app` retorna uma lista de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) dos <b>Client-Roles</b> do Client representado pelo parâmetro `client` vinculados ao usuário representado pelo parâmetro `id`.
+
+
+```ruby
+Keycloak::Admin.update_effective_user_roles(id, client_id, roles_names, access_token = nil)
+```
+
+`update_effective_user_roles` não está na lista de <b>Admin APIs</b> do Keycloak. Este método vincula ao usuário representado pelo parâmetro `id` todos os roles passados em um `array` no parâmetro `roles_names`. Os roles passados no parâmetro `roles_names` deverão pertencer ao Client representado pelo parâmetro `client_id`. Caso o usuário possua o vínculo com um role que não esteja no parâmetro `roles_names`, esse vínculo será removido, pois a finalidade desse método é que o usuário assuma efetivamente os roles passados nesse parâmetro. Em caso de sucesso, o retorno será `true`.
