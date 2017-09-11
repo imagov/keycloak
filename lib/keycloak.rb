@@ -397,7 +397,7 @@ module Keycloak
       generic_get("users/#{id}/role-mappings/clients/#{client}", nil, access_token)
     end
 
-    def self.update_effective_user_roles(id, client_id, rolesNames, access_token = nil)
+    def self.update_effective_user_roles(id, client_id, roles_names, access_token = nil)
       client = JSON get_clients({ clientId: client_id })
 
       user_roles = JSON get_client_level_role_for_user_and_app(id, client[0]['id'], access_token)
@@ -569,6 +569,19 @@ module Keycloak
       }
 
       default_call(proc)
+    end
+
+    def self.exists_name_or_email(value, user_id = '')
+      begin
+        usuario = Keycloak::Internal.get_user_info(value, true)
+        if user_id.empty? || user_id != usuario['id']
+          usuario.present?
+        else
+          false
+        end
+      rescue StandardError
+        false
+      end
     end
 
     def self.logged_federation_user?
