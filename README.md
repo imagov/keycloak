@@ -325,3 +325,67 @@ Keycloak::Admin.update_effective_user_roles(id, client_id, roles_names, access_t
 ```
 
 `update_effective_user_roles` não está na lista de <b>Admin APIs</b> do Keycloak. Este método vincula ao usuário representado pelo parâmetro `id` todos os roles passados em um `array` no parâmetro `roles_names`. Os roles passados no parâmetro `roles_names` deverão pertencer ao Client representado pelo parâmetro `client_id`. Caso o usuário possua o vínculo com um role que não esteja no parâmetro `roles_names`, esse vínculo será removido, pois a finalidade desse método é que o usuário assuma efetivamente os roles passados nesse parâmetro. Em caso de sucesso, o retorno será `true`.
+
+
+```ruby
+PUT /admin/realms/{realm}/users/{id}/reset-password
+Keycloak::Admin.reset_password(id, credential_representation, access_token = nil)
+```
+
+`reset_password` altera a senha do usuário representado pelo parâmetro `id`. A nova senha é representada pelo parâmetro `credential_representation`, que trata-se de um conjunto de informações formatadas segundo a seção [CredentialRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_credentialrepresentation) do manual de APIs do Keycloak.
+
+
+```ruby
+GET /admin/realms/{realm}/groups/{id}/role-mappings/clients/{client}/composite
+Keycloak::Admin.get_effective_client_level_role_composite_user(id, client, access_token = nil)
+```
+
+`get_effective_client_level_role_composite_user` retorna uma lista (array) de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) de um <b>Grupo</b> representado pelo parâmetro `id` atrelados a um <b>Client</b> representado pelo parâmetro `client`.
+
+
+Caso tenha algum serviço no manual [Keycloak Admin REST API](http://www.keycloak.org/docs-api/3.2/rest-api/index.html) que não tenha sido implementado na gem, há uma possibilidade do mesmo ser invocado utilizando os <b>Generics Methods</b> do modelu `Keycloak::Admin`. Os <b>Generics Methods</b> te possibilita fazer a requisição de qualquer uma das APIs, seja ela `GET`, `POST`, `PUT` ou `DELETE`, passando os parâmetros da requisição como `hashes` nos parâmetros `query_parameters` e `body_parameter` dos <b>Generics Methods</b>.
+<br>
+Veja a seguir os <b>Generics Methods</b>:
+<br>
+
+```ruby
+Keycloak::Admin.generic_get(service, query_parameters = nil, access_token = nil)
+```
+
+`generic_get` permite que você faça requisiçes de serviços `GET` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Queries Parameters</b> da requisição.<br>
+Exemplo:
+```ruby
+    Keycloak::Admin.generic_get("users/", {email: 'admin@test.com'}, "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldU...")
+```
+
+
+
+```ruby
+Keycloak::Admin.generic_post(service, query_parameters, body_parameter, access_token = nil)
+```
+
+`generic_post` permite que você faça requisições de serviços `POST` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.<br>
+Exemplo:
+```ruby
+    Keycloak::Admin.generic_post("users/", nil, { username: "admin", email: "admin@test.com", enabled: true }, "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldU...")
+```
+
+
+```ruby
+Keycloak::Admin.generic_put(service, query_parameters, body_parameter, access_token = nil)
+```
+
+`generic_put` permite que você faça requisições de serviços `PUT` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.
+
+
+```ruby
+Keycloak::Admin.generic_delete(service, query_parameters = nil, body_parameter = nil, access_token = nil)
+```
+
+`generic_delete` permite que você faça requisições de serviços `DELETE` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.
+
+
+
+### Keycloak::Internal
+
+O módulo `Keycloak::internal`disponibiliza métodos criados para facilitar a interação entre a aplicação e o <b>Keycloak</b>. Partindo das informações encontradas no arquivo de instalação `keycloak.json`, todos os métodos invocados serão autenticados automaticamente, utilizando as credências da aplicação, dependendo assim dos <b>roles</b> atribuídos a mesma para que o retorno da requisição seja autorizado.
