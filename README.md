@@ -3,6 +3,8 @@ A gem Keycloak foi desenvolvida para integrar aplicações e serviços ao sistem
 
 O seu desenvolvimento foi baseado na versão 3.2 do Keycloak, cuja documentação pode ser encontrada [aqui](http://www.keycloak.org/archive/documentation-3.2.html).
 
+Publicação da gem: https://rubygems.org/gems/keycloak
+
 ## Instalação
 
 Adicione esta linha no <b>Gemfile</b> de sua aplicação:
