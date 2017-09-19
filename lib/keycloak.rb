@@ -404,7 +404,7 @@ module Keycloak
 
       roles = Array.new
       # Include new role
-      rolesNames.each do |r|
+      roles_names.each do |r|
         if r && !r.empty?
           found = false
           user_roles.each do |ur|
@@ -423,7 +423,7 @@ module Keycloak
       # Exclude old role
       user_roles.each do |ur|
         found = false
-        rolesNames.each do |r|
+        roles_names.each do |r|
           if r && !r.empty?
             found = ur['name'] == r
             break if found
@@ -444,8 +444,8 @@ module Keycloak
       end
     end
 
-    def self.reset_password(id, credentialRepresentation, access_token = nil)
-      generic_put("users/#{id}/reset-password", nil, credentialRepresentation, access_token)
+    def self.reset_password(id, credential_representation, access_token = nil)
+      generic_put("users/#{id}/reset-password", nil, credential_representation, access_token)
     end
 
     def self.get_effective_client_level_role_composite_user(id, client, access_token = nil)
