@@ -21,6 +21,10 @@ Ou instale você mesmo:
 
     $ gem install keycloak
 
+Para adicionar seu arquivo de configuração:
+
+    $ rails generate initializer
+
 ## Utilização
 
 Considerando que você já possua um ambiente do Keycloak configurado e a gem já instalada, o próximo passo é definir como será a autenticação da aplicação. O Keycloak trabalha com os principais protocolos de autenticação, tais como o OpenID Connect, Oauth 2.0 e SAML 2.0, integrando acesso a sistemas via Single-Sign On, podendo inclusive disponibilizar acessos a usuários LDAP ou Active Directory.
