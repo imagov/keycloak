@@ -20,6 +20,14 @@ Então execute:
 Ou instale você mesmo:
 
     $ gem install keycloak
+    
+To add the configuration file:
+
+	$ rails generate initializer
+    
+Para adicionar o arquivo de configuração:
+
+    $ rails generate initializer
 
 ## Utilização
 
