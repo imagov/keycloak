@@ -614,9 +614,9 @@ module Keycloak
                                         temporary: false,
                                         value: password }
 
-          if Keycloak.generic_request(token["access_token"],
-                                      Keycloak::Admin.full_url("users/#{user['id']}/reset-password"),
-                                      nil, credential_representation, 'PUT')
+          if user['federationLink'] != nil || Keycloak.generic_request(token["access_token"],
+                                                                       Keycloak::Admin.full_url("users/#{user['id']}/reset-password"),
+                                                                       nil, credential_representation, 'PUT')
 
             client = JSON Keycloak.generic_request(token["access_token"],
                                                    Keycloak::Admin.full_url("clients/"),
