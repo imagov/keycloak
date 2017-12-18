@@ -398,7 +398,7 @@ module Keycloak
     end
 
     def self.update_effective_user_roles(id, client_id, roles_names, access_token = nil)
-      client = JSON get_clients({ clientId: client_id })
+      client = JSON get_clients({ clientId: client_id }, access_token)
 
       user_roles = JSON get_client_level_role_for_user_and_app(id, client[0]['id'], access_token)
 
