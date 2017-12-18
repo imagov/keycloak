@@ -589,8 +589,9 @@ module Keycloak
       info['federationLink'] != nil
     end
 
-    def self.create_starter_user(username, password, email, client_roles_names, proc = nil)
+    def self.create_simple_user(username, password, email, first_name, last_name, realm_roles_names, client_roles_names, proc = nil)
       begin
+        username.downcase!
         user = get_user_info(username, true)
         newUser = false
       rescue Keycloak::UserLoginNotFound
@@ -602,6 +603,8 @@ module Keycloak
       proc_default = lambda { |token|
         user_representation = { username: username,
                                 email: email,
+                                firstName: first_name,
+                                lastName: last_name,
                                 enabled: true }
 
         if !newUser || Keycloak.generic_request(token["access_token"],
@@ -637,6 +640,22 @@ module Keycloak
                                        Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/clients/#{client[0]['id']}"),
                                        nil, roles, 'POST')
             end
+
+            roles = []
+            realm_roles_names.each do |r|
+              if r.present?
+                role = JSON Keycloak.generic_request(token["access_token"],
+                                                     Keycloak::Admin.full_url("roles/#{r}"),
+                                                     nil, nil, 'GET')
+                roles.push(role)
+              end
+            end
+
+            if roles.count > 0
+              Keycloak.generic_request(token["access_token"],
+                                       Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/realm"),
+                                       nil, roles, 'POST')
+            end
           end
 
         end
@@ -645,6 +664,10 @@ module Keycloak
       if default_call(proc_default)
         proc.call user unless proc.nil?
       end
+    end
+
+    def self.create_starter_user(username, password, email, client_roles_names, proc = nil)
+      Keycloak::Internal.create_simple_user(username, password, email, '', '', [], client_roles_names, proc)
     end
 
     def self.get_client_roles
