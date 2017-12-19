@@ -625,39 +625,44 @@ module Keycloak
                                                    Keycloak::Admin.full_url("clients/"),
                                                    { clientId: Keycloak::Client.client_id }, nil, 'GET')
 
-            roles = []
-            client_roles_names.each do |r|
-              if r.present?
-                role = JSON Keycloak.generic_request(token["access_token"],
-                                                     Keycloak::Admin.full_url("clients/#{client[0]['id']}/roles/#{r}"),
-                                                     nil, nil, 'GET')
-                roles.push(role)
+            if client_roles_names.count > 0
+              roles = []
+              client_roles_names.each do |r|
+                if r.present?
+                  role = JSON Keycloak.generic_request(token["access_token"],
+                                                      Keycloak::Admin.full_url("clients/#{client[0]['id']}/roles/#{r}"),
+                                                      nil, nil, 'GET')
+                  roles.push(role)
+                end
+              end
+
+              if roles.count > 0
+                Keycloak.generic_request(token["access_token"],
+                                        Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/clients/#{client[0]['id']}"),
+                                        nil, roles, 'POST')
               end
             end
 
-            if roles.count > 0
-              Keycloak.generic_request(token["access_token"],
-                                       Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/clients/#{client[0]['id']}"),
-                                       nil, roles, 'POST')
-            end
-
-            roles = []
-            realm_roles_names.each do |r|
-              if r.present?
-                role = JSON Keycloak.generic_request(token["access_token"],
-                                                     Keycloak::Admin.full_url("roles/#{r}"),
-                                                     nil, nil, 'GET')
-                roles.push(role)
+            if realm_roles_names.count > 0
+              roles = []
+              realm_roles_names.each do |r|
+                if r.present?
+                  role = JSON Keycloak.generic_request(token["access_token"],
+                                                      Keycloak::Admin.full_url("roles/#{r}"),
+                                                      nil, nil, 'GET')
+                  roles.push(role)
+                end
               end
-            end
 
-            if roles.count > 0
-              Keycloak.generic_request(token["access_token"],
-                                       Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/realm"),
-                                       nil, roles, 'POST')
+              if roles.count > 0
+                Keycloak.generic_request(token["access_token"],
+                                        Keycloak::Admin.full_url("users/#{user['id']}/role-mappings/realm"),
+                                        nil, roles, 'POST')
+              end
+            else
+              true
             end
           end
-
         end
       }
 
