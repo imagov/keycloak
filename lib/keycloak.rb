@@ -95,7 +95,6 @@ module Keycloak
           case response.code
           when 200..399
             response.body
-
           else
             response.return!
           end
@@ -826,6 +825,12 @@ module Keycloak
           true
         else
           response.body
+        end
+      when 400..499
+        begin
+          response.return!
+        rescue RestClient::ExceptionWithResponse => err
+          raise ActionController::RoutingError.new(err.response)
         end
       else
         if Keycloak.explode_exception
