@@ -63,9 +63,28 @@ module Keycloak
         # else 
         # response.return! 
         # end 
-        response.body }
-      end 
+        response.body 
+      }
+      end
+       
         exec_request _request 
+    end
+
+    def self.get_userinfo_issuer(access_token = '')
+      verify_setup
+      access_token = self.token["access_token"]
+      
+      if access_token.empty?
+        payload = { 'access_token' => access_token }
+        header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
+        _request = -> do
+          RestClient.post(@configuration['userinfo_endpoint'], payload, header){ |response, request, result|
+           response.body 
+          } 
+        end 
+        
+        exec_request _request 
+      end
     end
 
     def self.get_tokeen_by_refrsh_token(refresh_token = '')
