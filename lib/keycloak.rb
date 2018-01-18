@@ -53,6 +53,7 @@ module Keycloak
 
     def self.get_token_by_exchange(issuer, issuer_token)
       setup_module 
+      
       payload = { 'client_id' => @client_id, 'client_secret' => @secret, 'audience' => @client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange', 'subject_token_type' => 'urn:ietf:params:oauth:token-type:access_token', 'subject_issuer' => issuer, 'subject_token' => issuer_token }
       header = {'Content-Type' => 'application/x-www-form-urlencoded'} 
      _request = -> do
@@ -72,19 +73,17 @@ module Keycloak
 
     def self.get_userinfo_issuer(access_token = '')
       verify_setup
-      access_token = self.token["access_token"]
       
-      if access_token.empty?
-        payload = { 'access_token' => access_token }
-        header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
-        _request = -> do
-          RestClient.post(@configuration['userinfo_endpoint'], payload, header){ |response, request, result|
-           response.body 
-          } 
-        end 
-        
-        exec_request _request 
+      access_token = self.token["access_token"] if access_token.empty?
+      payload = { 'access_token' => access_token }
+      header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
+      _request = -> do
+        RestClient.post(@configuration['userinfo_endpoint'], payload, header){ |response, request, result|
+          response.body 
+        } 
       end
+      
+      exec_request _request 
     end
 
     def self.get_tokeen_by_refrsh_token(refresh_token = '')
