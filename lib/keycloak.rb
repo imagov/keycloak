@@ -8,7 +8,8 @@ require 'uri'
 module Keycloak
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-                  :proc_cookie_token, :proc_external_attributes
+                  :proc_cookie_token, :proc_external_attributes,
+                  :realm, :auth_server_url
   end
 
 
@@ -21,8 +22,8 @@ module Keycloak
 
   module Client
     class << self
-      attr_reader :realm, :url, :client_id, :auth_server_url,
-                  :secret, :configuration, :public_key
+      attr_accessor :realm, :auth_server_url
+      attr_reader :client_id, :secret, :configuration, :public_key
     end
 
     KEYCLOAK_JSON_FILE = 'keycloak.json'
@@ -86,7 +87,7 @@ module Keycloak
       exec_request _request 
     end
 
-    def self.get_tokeen_by_refrsh_token(refresh_token = '')
+    def self.get_token_by_refresh_token(refresh_token = '')
       verify_setup
 
       refresh_token = self.token['refresh_token'] if refresh_token.empty?
@@ -112,14 +113,16 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_introspection(token = '')
+    def self.get_token_introspection(token = '', client_id = '', secret = '')
       verify_setup
 
       token = self.token["access_token"] if token.empty?
-
       payload = { 'token' => token }
 
-      authorization = Base64.strict_encode64("#{@client_id}:#{@secret}")
+      client_id = @client_id if client_id.empty?
+      secret = @secret if secret.empty?
+
+      authorization = Base64.strict_encode64("#{client_id}:#{secret}")
       authorization = "Basic #{authorization}"
 
       header = {'Content-Type' => 'application/x-www-form-urlencoded',
@@ -209,7 +212,7 @@ module Keycloak
     def self.url_user_account
       verify_setup
 
-      "#{@url}/realms/#{@realm}/account"
+      "#{@auth_server_url}/realms/#{@realm}/account"
     end
 
     def self.has_role?(user_role, access_token = '')
@@ -276,14 +279,19 @@ module Keycloak
         if File.exists?(KEYCLOAK_JSON_FILE)
           installation = JSON File.read(KEYCLOAK_JSON_FILE)
           @realm = installation["realm"]
-          @url = installation["auth-server-url"]
           @client_id = installation["resource"]
           @secret = installation["credentials"]["secret"]
           @public_key = installation["realm-public-key"]
           @auth_server_url = installation["auth-server-url"]
           openid_configuration
         else
-          raise "#{KEYCLOAK_JSON_FILE} not found."
+          if Keycloak.realm.blank? || Keycloak.auth_server_url.blank?
+            raise "#{KEYCLOAK_JSON_FILE} and relm settings not found."
+          else
+            @realm = Keycloak.realm
+            @auth_server_url = Keycloak.auth_server_url
+            openid_configuration
+          end
         end
       end
 
@@ -311,7 +319,7 @@ module Keycloak
 
       def self.openid_configuration
         RestClient.proxy = Keycloak.proxy unless Keycloak.proxy.empty?
-        config_url = "#{@url}/realms/#{@realm}/.well-known/openid-configuration"
+        config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
         _request = -> do
           RestClient.get config_url
         end

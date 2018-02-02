@@ -33,13 +33,27 @@ Para adicionar o arquivo de configuração:
 
 Considerando que você já possua um ambiente do Keycloak configurado e a gem já instalada, o próximo passo é definir como será a autenticação da aplicação. O Keycloak trabalha com os principais protocolos de autenticação, tais como o OpenID Connect, Oauth 2.0 e SAML 2.0, integrando acesso a sistemas via Single-Sign On, podendo inclusive disponibilizar acessos a usuários LDAP ou Active Directory.
 
-Ao cadastrar um Reino e também um Client no seu ambiente Keycloak, será necessário fazer o download do arquivo de instalação do Client para dentro da pasta raiz da aplicação, para que a gem obtenha as informações necessárias para interagir com o Keycloak. Para fazer esse download, basta acessar o cadastro de seu Client, clicar na aba <b>Installation</b>, selecionar <b>Keycloak OIDC JSON</b> no campo <b>Format option</b> e clicar em <b>Download</b>.
+Ao cadastrar um Reino e também um Client no seu ambiente Keycloak, você poderá fazer o download do arquivo de instalação do Client para dentro da pasta raiz da aplicação, para que a gem obtenha as informações necessárias para interagir com o Keycloak. Para fazer esse download, basta acessar o cadastro de seu Client, clicar na aba <b>Installation</b>, selecionar <b>Keycloak OIDC JSON</b> no campo <b>Format option</b> e clicar em <b>Download</b>. Caso a sua aplicação não trabalhe apenas com um client específico (aplicação servidora de APIs, por exemplo), então você poderá informar o reino que a gem irá interagir no arquivo de configuração `keycloak.rb`.
 
 A gem possui um módulo principal chamado <b>Keycloak</b>. Dentro desse módulo há três outros módulos: <b>Client</b>, <b>Admin</b> e <b>Internal</b>.
 
 ### Module Keycloak
 
 O módulo Keycloak possui alguns atributos e suas definições são fundamentais para o perfeito funcionamento da gem na aplicação.
+
+```ruby
+Keycloak.realm
+```
+
+Se a sua aplicação não trabalha apenas com um client específico (aplicação servidora de APIs, por exemplo), então você poderá informar o nome reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
+
+
+```ruby
+Keycloak.auth_server_url
+```
+
+Para o mesmo cenário do atributo acima, você poderá informar a url reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
+
 
 ```ruby
 Keycloak.proxy
