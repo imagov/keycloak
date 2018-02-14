@@ -45,14 +45,14 @@ O módulo Keycloak possui alguns atributos e suas definições são fundamentais
 Keycloak.realm
 ```
 
-Se a sua aplicação não trabalha apenas com um client específico (aplicação servidora de APIs, por exemplo), então você poderá informar o nome reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
+Se a sua aplicação não trabalha apenas com um client específico (aplicação servidora de APIs, por exemplo), então você poderá informar o nome do reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
 
 
 ```ruby
 Keycloak.auth_server_url
 ```
 
-Para o mesmo cenário do atributo acima, você poderá informar a url reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
+Para o mesmo cenário do atributo acima, você poderá informar a url do reino que a gem irá interagir nesse atributo. Ao ser instalada, a gem cria o arquivo `keycloak.rb` em `config/initializers`. Este atributo pode ser encontrado e definido nesse arquivo.
 
 
 ```ruby
@@ -138,6 +138,20 @@ Keycloak::Client.get_token_by_code(code, redirect_uri)
 ```
 
 Ao utilizar o método `Keycloak::Client.url_login_redirect` para obter um `code`, passe-o como parâmetro neste método para que o Keycloak retorne um token, efetuando assim o login do usuário na aplicação. O segundo parâmetro (`redirect_uri`) deve ser passado para que, ao disponibilizar um token, o Keycloak redirecione para a url informada.
+
+
+```ruby
+Keycloak::Client.get_token_by_exchange(issuer, issuer_token)
+```
+
+Para obter um token através de um token obtido anteriormente de um provedor confiável (padrão OpenID), como Facebook, Gooble, Twitter, ou até mesmo outro reino configurado no keycloak, basta invocar este método, passando no parâmetro `issuer` o alias do provedor configurado no reino, e, no parâmetro `issuer_token` o token obtido por esse provedor. Com isso, será retornado um token autenticado pelo teu reino.
+
+
+```ruby
+Keycloak::Client.get_userinfo_issuer(access_token = '')
+```
+
+Esse método retorna as informações do usuário de um provevedor (`issuer` do método `get_token_by_exchange`) representado pelo `access_token` passado como parâmetro. Caso o parâmetro `access_token` não seja informado, então a gem obterá essa informação no cookie.
 
 
 ```ruby
