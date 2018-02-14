@@ -132,7 +132,7 @@ If you choose to authenticate users using the screen of your own application, th
 Keycloak::Client.url_login_redirect(redirect_uri, response_type = 'code')
 ```
 
-To authenticate the users of your application using a template configured in Keycloak, redirect the request to the url returned in this method. Pass as a parameter the url that the user will have access in case of successful authentication (`redirect_uri`) and also the type of response (`response_type`), which if not informed, gem will assume the `code` value. If the authentication is successful, then a `code` will be returned that will enable you to request a token from <b>Keycloak<b>.
+To authenticate the users of your application using a template configured in Keycloak, redirect the request to the url returned in this method. Pass as a parameter the url that the user will have access in case of successful authentication (`redirect_uri`) and also the type of response (`response_type`), which if not informed, gem will assume the `code` value. If the authentication is successful, then a `code` will be returned that will enable you to request a token from <b>Keycloak</b>.
 
 
 ```ruby
