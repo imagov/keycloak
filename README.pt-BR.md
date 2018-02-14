@@ -21,10 +21,6 @@ Ou instale você mesmo:
 
     $ gem install keycloak
     
-To add the configuration file:
-
-	$ rails generate initializer
-    
 Para adicionar o arquivo de configuração:
 
     $ rails generate initializer
@@ -381,7 +377,7 @@ Keycloak::Admin.get_effective_client_level_role_composite_user(id, client, acces
 `get_effective_client_level_role_composite_user` retorna uma lista (array) de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) de um <b>Grupo</b> representado pelo parâmetro `id` atrelados a um <b>Client</b> representado pelo parâmetro `client`.
 
 
-Caso tenha algum serviço no manual [Keycloak Admin REST API](http://www.keycloak.org/docs-api/3.2/rest-api/index.html) que não tenha sido implementado na gem, há uma possibilidade do mesmo ser invocado utilizando os <b>Generics Methods</b> do modelu `Keycloak::Admin`. Os <b>Generics Methods</b> te possibilita fazer a requisição de qualquer uma das APIs, seja ela `GET`, `POST`, `PUT` ou `DELETE`, passando os parâmetros da requisição como `hashes` nos parâmetros `query_parameters` e `body_parameter` dos <b>Generics Methods</b>.
+Caso tenha algum serviço no manual [Keycloak Admin REST API](http://www.keycloak.org/docs-api/3.2/rest-api/index.html) que não tenha sido implementado na gem, há uma possibilidade do mesmo ser invocado utilizando os <b>Generics Methods</b> do model `Keycloak::Admin`. Os <b>Generics Methods</b> te possibilita fazer a requisição de qualquer uma das APIs, seja ela `GET`, `POST`, `PUT` ou `DELETE`, passando os parâmetros da requisição como `hashes` nos parâmetros `query_parameters` e `body_parameter` dos <b>Generics Methods</b>.
 <br>
 Veja a seguir os <b>Generics Methods</b>:
 <br>
