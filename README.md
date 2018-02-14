@@ -367,7 +367,7 @@ Keycloak::Admin.get_effective_client_level_role_composite_user(id, client, acces
 `get_effective_client_level_role_composite_user` return a list (array) of [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) of a <b>Group</b> represented by `id` parameter attached to a <b>Client</b> represented by `client` parameter.
 
 
-If there is any service in the manual [Keycloak Admin REST API](http://www.keycloak.org/docs-api/3.2/rest-api/index.html) that has not been implemented in this gem, there is a possibility of being invoked using the <b>Generics Methods</b> of the `Keycloak::Admin` model. The <b>Generics Methods</b> allow you to request any of the APIs, either `GET`,` POST`, `PUT` or` DELETE`, passing the request parameters as `hashes` in the parameters` query_parameters` and `body_parameter` of the <b>Generics Methods</ b>.
+If there is any service in the manual [Keycloak Admin REST API](http://www.keycloak.org/docs-api/3.2/rest-api/index.html) that has not been implemented in this gem, there is a possibility of being invoked using the <b>Generics Methods</b> of the `Keycloak::Admin` model. The <b>Generics Methods</b> allow you to request any of the APIs, either `GET`,` POST`, `PUT` or` DELETE`, passing the request parameters as `hashes` in the parameters` query_parameters` and `body_parameter` of the <b>Generics Methods</b>.
 <br>
 The following are the <b>Generics Methods</b>:
 <br>
