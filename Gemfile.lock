@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    keycloak (2.3.0)
+    keycloak (2.3.1)
       json
       jwt
       rest-client
@@ -40,7 +40,7 @@ GEM
     rspec-support (3.7.1)
     unf (0.1.4)
       unf_ext
-    unf_ext (0.0.7.4)
+    unf_ext (0.0.7.5)
 
 PLATFORMS
   ruby
