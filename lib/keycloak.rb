@@ -271,6 +271,16 @@ module Keycloak
       end
     end
 
+    def self.decoded_access_token(access_token = '')
+      access_token = self.token["access_token"] if access_token.empty?
+      JWT.decode access_token, @public_key, false, { :algorithm => 'RS256' }
+    end
+
+    def self.decoded_refresh_token(refresh_token = '')
+      refresh_token = self.token["access_token"] if refresh_token.empty?
+      JWT.decode refresh_token, @public_key, false, { :algorithm => 'RS256' }
+    end
+
     private
 
       KEYCLOACK_CONTROLLER_DEFAULT = 'session'
@@ -346,16 +356,6 @@ module Keycloak
         end
 
         exec_request _request
-      end
-
-      def self.decoded_access_token(access_token = '')
-        access_token = self.token["access_token"] if access_token.empty?
-        JWT.decode access_token, @public_key, false, { :algorithm => 'RS256' }
-      end
-
-      def self.decoded_refresh_token(refresh_token = '')
-        refresh_token = self.token["access_token"] if refresh_token.empty?
-        JWT.decode refresh_token, @public_key, false, { :algorithm => 'RS256' }
       end
 
       def self.decoded_id_token(idToken = '')
