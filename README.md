@@ -8,6 +8,8 @@ Its development was based on version 3.2 of Keycloak, whose documentation can be
 
 Publication of gem: https://rubygems.org/gems/keycloak
 
+Exemple: https://github.com/imagov/example-gem-keycloak
+
 ## Installation
 
 Add this line in your application's <b>gemfile</b>:
