@@ -5,6 +5,8 @@ O seu desenvolvimento foi baseado na versão 3.2 do Keycloak, cuja documentaçã
 
 Publicação da gem: https://rubygems.org/gems/keycloak
 
+Exemplo: https://github.com/imagov/example-gem-keycloak
+
 ## Instalação
 
 Adicione esta linha no <b>Gemfile</b> de sua aplicação:
