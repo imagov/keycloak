@@ -6,12 +6,13 @@ require 'base64'
 require 'uri'
 
 module Keycloak
+  KEYCLOAK_JSON_FILE = 'keycloak.json'
+
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
                   :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url
   end
-
 
   def self.explode_exception
     if Keycloak.generate_request_exception == nil
@@ -20,13 +21,20 @@ module Keycloak
     Keycloak.generate_request_exception
   end
 
+  def self.installation_file
+    @installation_file ||= KEYCLOAK_JSON_FILE
+  end
+
+  def self.installation_file=(file = nil)
+    raise InstallationFileNotFound unless file.instance_of?(String) && File.exists?(file)
+    @installation_file = file || KEYCLOAK_JSON_FILE
+  end
+
   module Client
     class << self
       attr_accessor :realm, :auth_server_url
       attr_reader :client_id, :secret, :configuration, :public_key
     end
-
-    KEYCLOAK_JSON_FILE = 'keycloak.json'
 
     def self.get_token(user, password)
       setup_module
@@ -276,8 +284,8 @@ module Keycloak
       KEYCLOACK_CONTROLLER_DEFAULT = 'session'
 
       def self.get_installation
-        if File.exists?(KEYCLOAK_JSON_FILE)
-          installation = JSON File.read(KEYCLOAK_JSON_FILE)
+        if File.exists?(Keycloak.installation_file)
+          installation = JSON File.read(Keycloak.installation_file)
           @realm = installation["realm"]
           @client_id = installation["resource"]
           @secret = installation["credentials"]["secret"]
@@ -286,7 +294,7 @@ module Keycloak
           openid_configuration
         else
           if Keycloak.realm.blank? || Keycloak.auth_server_url.blank?
-            raise "#{KEYCLOAK_JSON_FILE} and relm settings not found."
+            raise "#{Keycloak.installation_file} and relm settings not found."
           else
             @realm = Keycloak.realm
             @auth_server_url = Keycloak.auth_server_url

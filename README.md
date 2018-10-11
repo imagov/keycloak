@@ -42,6 +42,12 @@ Gem has a main module called <b>Keycloak</b>. Within this module there are three
 The Keycloak module has some attributes and its definitions are fundamental for the perfect functioning of the gem in the application.
 
 ```ruby
+Keycloak.installation_file = 'path/to/file.json'
+```
+
+Allows you to set the location of installation file if you have one. If not set, it will default to `keycloak.json` in the root of your repository. In any case, it will use installation file only if it's present.
+
+```ruby
 Keycloak.realm
 ```
 
