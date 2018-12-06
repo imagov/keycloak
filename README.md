@@ -35,7 +35,7 @@ To add the configuration file:
 
 Since you already have a Keycloak environment configured and the gem already installed, the next step is to define how the application will authenticate. Keycloak works with key authentication protocols, such as OpenID Connect, Oauth 2.0 and SAML 2.0, integrating system access through Single-Sign On, and can also provide access to <b>LDAP</b> or <b>Active Directory</b> users.
 
-When you register a realm and also a Client in your Keycloak environment, you can download the Client installation file into the root folder of the application so that gem gets the information it needs to interact with Keycloak. To download this, simply access your Client's registry, click the <b>Installation</b> tab, select <b>Keycloak OIDC JSON</b> in the <b>Format option</b> field and click <b>Download</b>. If your application does not only work with a specific client (application server for APIs, for example), then you can tell what is the realm that gem will interact in the `keycloak.rb` configuration file.
+When you register a realm and also a Client in your Keycloak environment, you can download the Client installation file into the `config` folder of the application so that gem gets the information it needs to interact with Keycloak. To download this, simply access your Client's registry, click the <b>Installation</b> tab, select <b>Keycloak OIDC JSON</b> in the <b>Format option</b> field and click <b>Download</b>. If your application does not only work with a specific client (application server for APIs, for example), then you can tell what is the realm that gem will interact in the `keycloak.rb` configuration file.
 
 Gem has a main module called <b>Keycloak</b>. Within this module there are three other modules: <b>Client</b>, <b>Admin</b> and <b>Internal</b>.
 
@@ -47,7 +47,7 @@ The Keycloak module has some attributes and its definitions are fundamental for 
 Keycloak.installation_file = 'path/to/file.json'
 ```
 
-Allows you to set the location of installation file if you have one. If not set, it will default to `keycloak.json` in the root of your repository. In any case, it will use installation file only if it's present.
+Allows you to set the location of installation file if you have one. If not set, it will default to `keycloak.json` in the `config` folder of your repository. In any case, it will use installation file only if it's present.
 
 ```ruby
 Keycloak.realm
@@ -130,7 +130,7 @@ The `Keycloak::Client` module has the methods that represent the <b>endpoint</b>
 We will detail each of these methods:
 
 ```ruby
-Keycloak::Client.get_token(user, password)
+Keycloak::Client.get_token(user, password, client_id = '', secret = '')
 ```
 
 If you choose to authenticate users using the screen of your own application, then use this method. Simply invoke it in the method of login in the `controller` defined with the session controller of your application, passing as parameter the <b>user</b> and the <b>password</b> informed by the user. If the authentication is valid, then a JSON containing the `access_token` and the `refresh_token` is returned.
@@ -144,21 +144,35 @@ To authenticate the users of your application using a template configured in Key
 
 
 ```ruby
-Keycloak::Client.get_token_by_code(code, redirect_uri)
+Keycloak::Client.get_token_by_code(code, redirect_uri, client_id = '', secret = '')
 ```
 
 When using the `Keycloak::Client.url_login_redirect` method to get a `code`, pass it as a parameter in this method so that Keycloak returns a token, thus logging the user in the application. The second parameter (`redirect_uri`) must be passed so that when a token is made available, Keycloak redirects to the url informed.
 
 
 ```ruby
-Keycloak::Client.get_token_by_refresh_token(refresh_token = '')
+Keycloak::Client.get_token_by_exchange(issuer, issuer_token, client_id = '', secret = '')
+```
+
+To get a token through a token previously obtained from a trusted provider (OpenID standard), such as Facebook, Gooble, Twitter, or even another realm configured in the keycloak, simply invoke this method, passing in the `issuer` parameter the provider alias configured in the realm, and in the `issuer_token` parameter the token obtained by that provider. This will return a token authenticated by your realm.
+
+
+```ruby
+Keycloak::Client.get_userinfo_issuer(access_token = '', userinfo_endpoint = '')
+```
+
+This method returns the user information of a provider (`issuer` of the `get_token_by_exchange` method represented by the `access_token` passed as parameter. If the `access_token` parameter is not informed, then the gem will get this information in the cookie.
+
+
+```ruby
+Keycloak::Client.get_token_by_refresh_token(refresh_token = '', client_id = '', secret = '')
 ```
 
 When the user is already logged in and your application internally tracks the token expiration time provided by Keycloak, then this method can be used to renew that token if it is still valid. To do this, simply pass the `refresh_token` as a parameter. If you do not inform `refresh_token`, gem will use the `refresh_token` stored in the cookie.
 
 
 ```ruby
-Keycloak::Client.get_token_introspection(token = '')
+Keycloak::Client.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
 ```
 
 This method returns the information from the `token` session passed as parameter. Among the information returned, the most important is the `active` field, since it informs whether the token session passed in the parameter is active or not. This will help your application control whether the logged-in user session has expired or not. If no token is passed as a parameter, gem will use the last `access_token` stored in the application's cookie.
@@ -172,14 +186,14 @@ There are some Keycloak services like <b>password reset</b>, <b>user registratio
 
 
 ```ruby
-Keycloak::Client.logout(redirect_uri = '', refresh_token = '')
+Keycloak::Client.logout(redirect_uri = '', refresh_token = '', client_id = '', secret = '', end_session_endpoint = '')
 ```
 
 When used before the expiration of the logged on user's session, this method terminates the session. If the `redirect_uri` parameter is fed, then Keycloak will redirect your application to the url informed after logout. The second parameter is `refresh_token`, obtained at the time of authentication or session update. If the latter is not informed, then the gem will use the `refresh_token` of the cookie
 
 
 ```ruby
-Keycloak::Client.get_userinfo(access_token = '')
+Keycloak::Client.get_userinfo(access_token = '', userinfo_endpoint = '')
 ```
 
 This method returns synthetic information from the user represented by the `access_token` passed as a parameter, such as `sub` - which is the authenticated user id -, `preferred_username` - which is the authenticated user name - and `email` - which is the user's email address. If the `access_token` parameter is not informed, then the gem will get this information in the cookie.
@@ -193,14 +207,14 @@ Returns the <b>url</b> for access to the realm user registry of the installation
 
 
 ```ruby
-Keycloak::Client.has_role?(user_role, access_token = '')
+Keycloak::Client.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
 ```
 
 The `has_role?` method decodes the JWT `access_token` and verifies that the user who owns the token has the <b>role</b> informed in the `user_role` parameter. If `access_token` is not informed then gem will use the `access_token` of the cookie.
 
 
 ```ruby
-Keycloak::Client.user_signed_in?(access_token = '')
+Keycloak::Client.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
 ```
 
 This method checks whether the `access_token` passed in the parameter is still active. To check whether the user is active or not, the gem invokes the `get_token_introspection` method internally. If `access_token` is not informed then gem will use the `access_token` of the cookie.
@@ -384,8 +398,8 @@ The following are the <b>Generics Methods</b>:
 Keycloak::Admin.generic_get(service, query_parameters = nil, access_token = nil)
 ```
 
-`generic_get` permite que você faça requisições de serviços `GET` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Queries Parameters</b> da requisição.<br>
-Exemplo:
+`generic_get` allows you to make <b>Keycloak</b> `GET` service requests. The part of the URI that identifies the service must be passed in the `service` parameter, already with the route parameters (such as `{client}`, for example) properly replaced. In the `query_parameters` parameter you can pass a `hash` containing the <b>Queries Parameters</b> of the request.<br>
+Example:
 ```ruby
     Keycloak::Admin.generic_get("users/", {email: 'admin@test.com'}, "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldU...")
 ```
@@ -395,107 +409,105 @@ Exemplo:
 Keycloak::Admin.generic_post(service, query_parameters, body_parameter, access_token = nil)
 ```
 
-`generic_post` permite que você faça requisições de serviços `POST` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.<br>
-Exemplo:
+`generic_post` allows you to make <b>Keycloak</b> `POST` service requests. The part of the URI that identifies the service must be passed in the `service` parameter, already with the route parameters (such as `{client}`, for example) properly replaced. In the `query_parameters` parameter you can pass a `hash` containing the <b>Query Parameters</b> of the request. In the `body_parameter` parameter you can pass a `hash` containing the <b>Body Parameters</b> of the request.<br>
+Example:
 ```ruby
     Keycloak::Admin.generic_post("users/", nil, { username: "admin", email: "admin@test.com", enabled: true }, "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldU...")
 ```
-
 
 ```ruby
 Keycloak::Admin.generic_put(service, query_parameters, body_parameter, access_token = nil)
 ```
 
-`generic_put` permite que você faça requisições de serviços `PUT` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.
+`generic_put` allows you to make <b>Keycloak</b> `PUT` service requests. The part of the URI that identifies the service must be passed in the `service` parameter, already with the route parameters (such as `{client}`, for example) properly replaced. In the `query_parameters` parameter you can pass a `hash` containing the <b>Query Parameters</b> of the request. In the `body_parameter` parameter you can pass a `hash` containing the <b>Body Parameters</b> of the request.
 
 
 ```ruby
 Keycloak::Admin.generic_delete(service, query_parameters = nil, body_parameter = nil, access_token = nil)
 ```
 
-`generic_delete` permite que você faça requisições de serviços `DELETE` do <b>Keycloak</b>. A parte da URI que identifica o serviço deve ser passada no parâmetro `service`, já com os parâmetros de rota (como o `{client}`, por exemplo) devidamente substituídos. No parâmetro `query_parameters` você poderá passar um `hash` contendo os <b>Query Parameters</b> da requisição. No parâmetro `body_parameter` você poderá passar um `hash` contendo os <b>Body Parameters</b> da requisição.
-
+`generic_delete` allows you to make <b>Keycloak</b> `DELETE` service requests. The part of the URI that identifies the service must be passed in the `service` parameter, already with the route parameters (such as `{client}`, for example) properly replaced. In the `query_parameters` parameter you can pass a `hash` containing the <b>Query Parameters</b> of the request. In the `body_parameter` parameter you can pass a `hash` containing the <b>Body Parameters</b> of the request.
 
 
 ### Keycloak::Internal
 
-O módulo `Keycloak::internal`disponibiliza métodos criados para facilitar a interação entre a aplicação e o <b>Keycloak</b>. Partindo das informações encontradas no arquivo de instalação `keycloak.json`, todos os métodos invocados serão autenticados automaticamente, utilizando as credências da aplicação (`grant_type = client_credentials`), dependendo assim dos <b>roles</b> atribuídos a mesma para que o retorno da requisição seja autorizado.
+The `Keycloak::internal` module provides methods designed to facilitate interaction between the application and <b>Keycloak</b>. From the information found in the `keycloak.json` installation file, all invoked methods will be authenticated automatically, using the application credentials (`grant_type = client_credentials`), depending on the assigned roles assigned to it. request is authorized.
 
 
 ```ruby
-Keycloak::Internal.get_users(query_parameters = nil)
+Keycloak::Internal.get_users(query_parameters = nil, client_id = '', secret = '')
 ```
 
-`get_users` invoca o método `Keycloak::Admin.get_users` que, por sua vez, retorna uma lista de usuários, filtrada de acordo com o hash de parâmetros passado em `query_parameters`.
+`get_users` invokes the `Keycloak::Admin.get_users` method that returns a list of users, filtered according to the parameters hash passed in `query_parameters`.
 
 
 ```ruby
-Keycloak::Internal.change_password(user_id, redirect_uri = '')
+Keycloak::Internal.change_password(user_id, redirect_uri = '', client_id = '', secret = '')
 ```
 
-`change_password` invocará a API `PUT /admin/realms/{realm}/users/{id}/execute-actions-email` do Keycloak requisitando a action `UPDATE_PASSWORD`. Isso fará com que o Keycloak dispare um e-mail para o usuário representado pelo parâmetro `user_id`. O parâmetro `redirect_uri` é opcional. Se não for preenchido, então não haverá nenhum link para clicar após a ação de reset de senha ter sido concluída.
+`change_password` will invoke the Keycloak `PUT /admin/realms/{realm}/users/{id}/execute-actions-email` API requesting the `UPDATE_PASSWORD` action. This will cause Keycloak to trigger an email to the user represented by the `user_id` parameter. The `redirect_uri` parameter is optional. If it is not filled, then there will be no link to click after the password reset action has been completed.
 
 
 ```ruby
-Keycloak::Internal.get_user_info(user_login, whole_word = false)
+Keycloak::Internal.get_user_info(user_login, whole_word = false, client_id = '', secret = ''))
 ```
 
-`get_user_info`, baseado no parâmetro `user_login`, que poderá recepcionar o `username` ou o `email` do usuário, retornará uma lista (array) de [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) no caso em que o parâmetro `whole_word` for `false`, ou retornará um [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) quando o parâmetro `whole_word` for `true`. O parâmetro `whole_word` indica se o método deverá considerar usuários que tenham no `username` ou `email` parte da expressão passada no parâmetro `user_login` - para os casos de `whole_word = false` -, ou que tenha exatamente a expressão passada nesse parâmetro - para os casos de `whole_word = true`.
+`get_user_info`, based on the `user_login` parameter, which will be able to receive the `username` or the `email` of the user, will return an array of [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) in the case where the `whole_word` parameter is `false`, or it will return a [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) when the `whole_word` parameter is `true`. The `whole_word` parameter indicates whether the method should consider users that have `username` or `email` part of the expression passed in the `user_login` parameter - for the cases of `whole_word = false` - or that has exactly the last expression in this parameter - for the cases of `whole_word = true`.
 
 
 ```ruby
-Keycloak::Internal.forgot_password(user_login, redirect_uri = '')
+Keycloak::Internal.forgot_password(user_login, redirect_uri = '', client_id = '', secret = '')
 ```
 
-`forgot_password` invocará o método `Keycloak::Internal.change_password` após invocar o método `Keycloak::Internal.get_user_info` - passando no parâmetro `user_login` do método descrito o parâmetro `user_login`deste tópico e passando `true` no parâmetro `whole_word` -. A utilização deste método é indicado para os casos de aplicações permitam o reset da senha dos usuários sem que o mesmo esteja logado.
+`forgot_password` will invoke the `Keycloak::Internal.change_password` method after invoking the `Keycloak::Internal.get_user_info` method - passing in the `user_login` parameter of the described method the `user_login` parameter of this topic and passing `true` in the parameter `whole_word`. The use of this method is indicated for the cases of applications allow the reset of the password of the users without it is logged in.
 
 
 ```ruby
-Keycloak::Internal.exists_name_or_email(value, user_id = '')
+Keycloak::Internal.exists_name_or_email(value, user_id = '', client_id = '', secret = '')
 ```
 
-`exists_name_or_email` verifica se no reino já existe algum usuário com `username` ou o `email` passado no parâmetro `value`. O parâmetro `user_id` serve para passar o `ID` de um usuário nos casos em que deseja-se alterar o `username` ou o `email` do mesmo, para que assim sejam considerados na verificação do `username` e do `email` usuários diferentes do usuário com o `ID` informado em `user_id`.
+`exists_name_or_email` checks whether a user with `username` or `email` already exists in the `value` parameter in the realm. The `user_id` parameter is used to pass the `ID` of a user in cases where it is desired to change the `username` or `email` of the same, so that they are considered in the `username` and `email verification` different users of the user with the `ID` informed in `user_id`.
 
 
 ```ruby
-Keycloak::Internal.get_logged_user_info
+Keycloak::Internal.get_logged_user_info(client_id = '', secret = '')
 ```
 
-`get_logged_user_info` retorna o [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) do usuário logado na aplicação.
-
-
-```ruby
-# GET /admin/realms/{realm}/users
-Keycloak::Internal.logged_federation_user?
-```
-
-`logged_federation_user?` incova o método `Keycloak::Internal.get_logged_user_info` e verifica se o mesmo é um <b>Federation User</b> (um usuário do AD por exemplo).
+`get_logged_user_info` returns the [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) of the user logged into the application.
 
 
 ```ruby
 # GET /admin/realms/{realm}/users
-Keycloak::Internal.create_starter_user(username, password, email, client_roles_names, proc = nil)
+Keycloak::Internal.logged_federation_user?(client_id = '', secret = '')
 ```
 
-`create_starter_user` é indicado para aplicações que permitam a criação de novos usuários sem que um usuário esteja logado ou até mesmo para criar novos usuários a partir do `rake db:seed`. Nos parâmetros `username`, `password` e `email` devem ser passados o nome do usuário, a senha do usuário, e o e-mail do usuário, respectivamente. No parâmetro `client_roles_names`deve ser passado uma lista (array) com o nome dos `roles` do Client que serão atribuídos ao usuário. O parâmetro `proc` trata-se de um método <b>lambda</b> que disponibilizará como parâmetro a [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) do usuário criado para que sejam definidas ações por parte da aplicação. Este método terá como retorno o mesmo retorno do método do parâmetro `proc` se o mesmo for definido, caso contrário retornará a [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) do usuário criado.
+`logged_federation_user?` method invokes the `Keycloak::Internal.get_logged_user_info` method and checks to see if it is an <b>Federation User</b> (an LDAP user for example).
 
 
 ```ruby
-Keycloak::Internal.get_client_roles
+# GET /admin/realms/{realm}/users
+Keycloak::Internal.create_starter_user(username, password, email, client_roles_names, proc = nil, client_id = '', secret = '')
 ```
 
-`get_client_roles` retornará uma lista (array) de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) do Client indicado pelo arquivo de instalação `keycloak.json`.
+`create_starter_user` is suitable for applications that allow the creation of new users without a user being logged in or even to create new users from `rake db: seed`. In the `username`, `password` and `email` parameters, the user name, password, and email, respectively, must be passed. In the `client_roles_names` parameter, a list (array) with the name of the `roles` of the Client that will be assigned to the user must be passed. The `proc` parameter is a <b>lambda</b> method that will make available the [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) of the created user as a parameter, so that actions should be defined by the application. This method returns the same return of the `proc` parameter method if it is set, otherwise it will return to [UserRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_userrepresentation) of the created user.
 
 
 ```ruby
-Keycloak::Internal.get_client_user_roles(user_id)
+Keycloak::Internal.get_client_roles(client_id = '', secret = '')
 ```
 
-`get_client_user_roles` invocará o método `Keycloak::Admin.get_effective_client_level_role_composite_user` considerando o Client indicado pelo arquivo de instalação `keycloak.json` e o usuário representado pelo parâmetro `user_id`.
+`get_client_roles` will return an array of [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) from the Client indicated in the `client_id` parameter or, in the absence of this, by the client of the `keycloak.json` installation file.
 
 
 ```ruby
-Keycloak::Internal.has_role?(user_id, user_role)
+Keycloak::Internal.get_client_user_roles(user_id, client_id = '', secret = '')
 ```
 
-`has_role?` informará se o usuário representado pelo parâmetro `user_id` possui o <b>role</b> com o nome representado pelo parâmetro `user_role`.
+`get_client_user_roles` will invoke the `Keycloak::Admin.get_effective_client_level_role_composite_user` method by considering the Client indicated in the `client_id` parameter or, if not, by the client of the `keycloak.json` installation file and the user represented by the `user_id` parameter.
+
+
+```ruby
+Keycloak::Internal.has_role?(user_id, user_role, client_id = '', secret = '')
+```
+
+`has_role?` informing the user represented by the `user_id` parameter has <b>role</b> with the name represented by the `user_role` parameter.
