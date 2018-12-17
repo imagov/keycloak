@@ -450,6 +450,10 @@ module Keycloak
       generic_get("users/#{id}/role-mappings", nil, access_token)
     end
 
+    def self.get_groups(query_parameters = nil, access_token = nil)
+      generic_get("groups/", query_parameters, access_token)
+    end
+
     def self.get_clients(query_parameters = nil, access_token = nil)
       generic_get("clients/", query_parameters, access_token)
     end
@@ -578,6 +582,17 @@ module Keycloak
 
       proc = lambda {|token|
         Keycloak::Admin.get_users(query_parameters, token["access_token"])
+      }
+
+      default_call(proc, client_id, secret)
+    end
+
+    def self.get_groups(query_parameters = nil, client_id = '', secret = '')
+      client_id = Keycloak::Client.client_id if client_id.blank?
+      secret = Keycloak::Client.secret if secret.blank?
+
+      proc = lambda {|token|
+        Keycloak::Admin.get_groups(query_parameters, token["access_token"])
       }
 
       default_call(proc, client_id, secret)
