@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    keycloak (2.4.0)
+    keycloak (2.4.1)
       json
       jwt
       rest-client

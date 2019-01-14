@@ -313,6 +313,13 @@ Keycloak::Admin.get_role_mappings(id, access_token = nil)
 
 `get_role_mappings` retorna todas as <b>Role Mappings</b> do reino atribuídas ao usuário identificado pelo parâmetro `id`, independentemente do Client.
 
+```ruby
+# GET /admin/realms/{realm}/groups
+Keycloak::Admin.get_groups(query_parameters = nil, access_token = nil)
+```
+
+`get_groups` retorna a lista de [GroupRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_grouprepresentation) do reino. O parâmetro opcional  `query_parameters` espera um hash com propriedades correspondentes a qualquer um dos [query parameters](https://www.keycloak.org/docs-api/3.2/rest-api/index.html#_groups_resource) aceitos pela API.
+
 
 ```ruby
 # GET /admin/realms/{realm}/clients
@@ -438,6 +445,12 @@ Keycloak::Internal.get_users(query_parameters = nil, client_id = '', secret = ''
 ```
 
 `get_users` invoca o método `Keycloak::Admin.get_users` que, por sua vez, retorna uma lista de usuários, filtrada de acordo com o hash de parâmetros passado em `query_parameters`.
+
+```ruby
+Keycloak::Internal.get_groups(query_parameters = nil, client_id = '', secret = '')
+```
+
+`get_groups` invoca o método `Keycloak::Admin.get_groups` que retonar a hierarquia dos grupos do reino, filtrado de acordo com o hash passado no parâmetro `query_parameters`.
 
 
 ```ruby
