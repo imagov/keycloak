@@ -836,13 +836,14 @@ module Keycloak
     protected
 
       def self.default_call(proc, client_id = '', secret = '')
-        client_id = Keycloak::Client.client_id if client_id.blank?
-        secret = Keycloak::Client.secret if secret.blank?
         begin
           tk = nil
           resp = nil
 
           Keycloak::Client.get_installation
+
+          client_id = Keycloak::Client.client_id if client_id.blank?
+          secret = Keycloak::Client.secret if secret.blank?
 
           payload = { 'client_id' => client_id,
                       'client_secret' => secret,
