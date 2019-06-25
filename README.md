@@ -28,7 +28,7 @@ Or install it yourself:
 	
 To add the configuration file:
 
-	$ rails generate keycloak
+	$ rails generate keycloak:config
 
 	
 ## Use

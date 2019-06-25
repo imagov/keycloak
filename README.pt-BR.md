@@ -22,10 +22,10 @@ Então execute:
 Ou instale você mesmo:
 
     $ gem install keycloak
-    
+
 Para adicionar o arquivo de configuração:
 
-    $ rails generate keycloak
+    $ rails generate keycloak:config
 
 ## Utilização
 
