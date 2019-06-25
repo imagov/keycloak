@@ -8,3 +8,5 @@ Keycloak.keycloak_controller = 'session'
 Keycloak.realm = ''
 # relm url (only if the installation file is not present)
 Keycloak.auth_server_url = ''
+# The introspect of the token will be executed every time the Keycloak::Client.has_role? method is invoked, if this setting is set to true.
+Keycloak.validate_token_when_call_has_role = false

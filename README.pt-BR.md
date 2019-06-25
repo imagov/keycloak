@@ -25,7 +25,7 @@ Ou instale você mesmo:
     
 Para adicionar o arquivo de configuração:
 
-    $ rails generate initializer
+    $ rails generate keycloak
 
 ## Utilização
 
@@ -114,6 +114,13 @@ end
 ```
 
 <b>Observação:</b> Os atributos `Keycloak.proc_cookie_token` e `Keycloak.proc_external_attributes` podem ser definidos no `initialize` do controller `ApplicationController`.
+
+
+```ruby
+Keycloak.validate_token_when_call_has_role
+```
+
+Será executado o introspect do token todas as vezes que o método `Keycloak::Client.has_role?` for invocado, caso esta configuração esteja setada como `true`.
 
 
 ### Keycloak::Client

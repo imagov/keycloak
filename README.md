@@ -28,7 +28,7 @@ Or install it yourself:
 	
 To add the configuration file:
 
-	$ rails generate initializer
+	$ rails generate keycloak
 
 	
 ## Use
@@ -101,7 +101,6 @@ end
 ```
 This way, every time gem needs to use the token information to consume a Keycloak service, it will invoke this lambda method.
 
-
 ```ruby
 Keycloak.proc_external_attributes
 ```
@@ -121,6 +120,12 @@ end
 
 
 <b>Note:</b> The `Keycloak.proc_cookie_token` and `Keycloak.proc_external_attributes` attributes can be defined in the `initialize` of the controller `ApplicationController`.
+
+```ruby
+Keycloak.validate_token_when_call_has_role
+```
+
+The introspect of the token will be executed every time the `Keycloak::Client.has_role?` method is invoked, if this setting is set to `true`.
 
 
 ### Keycloak::Client
