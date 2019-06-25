@@ -12,7 +12,7 @@ module Keycloak
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
                   :proc_cookie_token, :proc_external_attributes,
-                  :realm, :auth_server_url
+                  :realm, :auth_server_url, :validate_token_when_call_has_role
   end
 
   def self.explode_exception
@@ -253,7 +253,7 @@ module Keycloak
       secret = @secret if secret.blank?
       token_introspection_endpoint = @configuration['token_introspection_endpoint'] if token_introspection_endpoint.blank?
 
-      if user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
+      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
         dt = decoded_access_token(access_token)[0]
         dt = dt["resource_access"][client_id]
         if dt != nil
@@ -351,6 +351,7 @@ module Keycloak
       def self.setup_module
         Keycloak.proxy ||= ''
         Keycloak.keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
+        Keycloak.validate_token_when_call_has_role ||= false
         get_installation
       end
 
