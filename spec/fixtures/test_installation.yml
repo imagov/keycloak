@@ -1,0 +1,2 @@
+test: true
+auth-server-url: 'http://localhost:8080/auth'

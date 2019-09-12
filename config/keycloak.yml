@@ -1,0 +1,4 @@
+auth-server-url: 'http://localhost:8180/auth'
+credentials:
+  secret: '6cf4a5d2-8704-4451-86d9-c1c84e1341f1'
+realm: 'test'

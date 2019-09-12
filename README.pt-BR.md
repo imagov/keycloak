@@ -40,10 +40,10 @@ A gem possui um módulo principal chamado <b>Keycloak</b>. Dentro desse módulo 
 O módulo Keycloak possui alguns atributos e suas definições são fundamentais para o perfeito funcionamento da gem na aplicação.
 
 ```ruby
-Keycloak.installation_file = 'path/to/file.json'
+Keycloak.installation_file = 'path/to/file.yml'
 ```
 
-Permite você determinar o local do arquivo de instalação do Keycloak, caso você esteja utilizando um. Se não for informado, o caminho default será `config/Keycloak.json`.
+Permite você determinar o local do arquivo de instalação do Keycloak, caso você esteja utilizando um. Se não for informado, o caminho default será `config/Keycloak.yml`.
 
 ```ruby
 Keycloak.realm
@@ -204,7 +204,7 @@ Esse método retorna informações sintéticas do usuário representado pelo `ac
 Keycloak::Client.url_user_account
 ```
 
-Retorna a <b>url</b> para acesso ao cadastro de usuários do Reino do arquivo de instalação (`keycloak.json`). Para ter acesso a tela, o Keycloak exigirá a autenticação do usuário. Após logado, e caso tenha permissão, o usuário terá acesso a suas informações cadastrais podendo inclusive alterá-las.
+Retorna a <b>url</b> para acesso ao cadastro de usuários do Reino do arquivo de instalação (`keycloak.yml`). Para ter acesso a tela, o Keycloak exigirá a autenticação do usuário. Após logado, e caso tenha permissão, o usuário terá acesso a suas informações cadastrais podendo inclusive alterá-las.
 
 
 ```ruby
@@ -246,7 +246,7 @@ Quando implementado o método `Keycloak.proc_external_attributes`, o método `ex
 
 O módulo `Keycloak::Admin`disponibiliza métodos que representam as [REST APIs do Keycloak](http://www.keycloak.org/docs-api/3.2/rest-api/index.html). Para a utilização dessas APIs, será necessário um `access_token` ativo, ou seja, a autenticação deverá ocorrer antes da utilização dos métodos para que um token válido seja utilizado como credencial. Caso o `access_token` não seja informado, então a gem utilizará o `access_token` do cookie. O usuário autenticado deverá ter o `role` do respectivo serviço invocado - roles do client `realm-management`, que representa o gerenciamento do reino.
 
-Segue abaixo a lista dos métodos. O parâmetro de rota `{realm}` de todas as APIs será obtido do arquivo de instalação `keycloak.json`:
+Segue abaixo a lista dos métodos. O parâmetro de rota `{realm}` de todas as APIs será obtido do arquivo de instalação `keycloak.yml`:
 
 
 ```ruby
@@ -310,7 +310,7 @@ Keycloak::Admin.revoke_consent_user(id, client_id = nil, access_token = nil)
 Keycloak::Admin.update_account_email(id, actions, redirect_uri = '', client_id = nil, access_token = nil)
 ```
 
-`update_account_email` envia um e-mail de atualização da conta para o usuário representado pelo parâmetro `id`. O e-mail contém um link que o usuário poderá clicar para executar um conjunto de ações representados pelo parâmetro `actions` - que aguarda um `array` de [ações definidas pelo Keycloak](http://www.keycloak.org/docs/3.2/server_admin/topics/users/required-actions.html). Um exemplo de valor que pode ser passado para o parâmetro `actions` é `['UPDATE_PASSWORD']`, que indica que a ação que o usuário deverá tomar ao clicar o link do e-mail é de alterar a sua senha. No parâmetro `redirect_uri`, caso necessário, deverá ser passada uma <b>url</b> para que, ao término do envio do e-mail, a aplicação seja redirecionada. O parâmetro `client_id` deverá ser informado caso o Client responsável pela as ações que deverão ser executadas não seja o mesmo do arquivo de instalação `keycloak.json`.
+`update_account_email` envia um e-mail de atualização da conta para o usuário representado pelo parâmetro `id`. O e-mail contém um link que o usuário poderá clicar para executar um conjunto de ações representados pelo parâmetro `actions` - que aguarda um `array` de [ações definidas pelo Keycloak](http://www.keycloak.org/docs/3.2/server_admin/topics/users/required-actions.html). Um exemplo de valor que pode ser passado para o parâmetro `actions` é `['UPDATE_PASSWORD']`, que indica que a ação que o usuário deverá tomar ao clicar o link do e-mail é de alterar a sua senha. No parâmetro `redirect_uri`, caso necessário, deverá ser passada uma <b>url</b> para que, ao término do envio do e-mail, a aplicação seja redirecionada. O parâmetro `client_id` deverá ser informado caso o Client responsável pela as ações que deverão ser executadas não seja o mesmo do arquivo de instalação `keycloak.yml`.
 
 
 ```ruby
@@ -444,7 +444,7 @@ Keycloak::Admin.generic_delete(service, query_parameters = nil, body_parameter =
 
 ### Keycloak::Internal
 
-O módulo `Keycloak::internal` disponibiliza métodos criados para facilitar a interação entre a aplicação e o <b>Keycloak</b>. Partindo das informações encontradas no arquivo de instalação `keycloak.json`, todos os métodos invocados serão autenticados automaticamente, utilizando as credências da aplicação (`grant_type = client_credentials`), dependendo assim dos <b>roles</b> atribuídos a mesma para que o retorno da requisição seja autorizado.
+O módulo `Keycloak::internal` disponibiliza métodos criados para facilitar a interação entre a aplicação e o <b>Keycloak</b>. Partindo das informações encontradas no arquivo de instalação `keycloak.yml`, todos os métodos invocados serão autenticados automaticamente, utilizando as credências da aplicação (`grant_type = client_credentials`), dependendo assim dos <b>roles</b> atribuídos a mesma para que o retorno da requisição seja autorizado.
 
 
 ```ruby
@@ -515,14 +515,14 @@ Keycloak::Internal.create_starter_user(username, password, email, client_roles_n
 Keycloak::Internal.get_client_roles(client_id = '', secret = '')
 ```
 
-`get_client_roles` retornará uma lista (array) de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) do Client indicado no parâmetro `client_id` ou, na falta desse, pelo Client do arquivo de instalação `keycloak.json`.
+`get_client_roles` retornará uma lista (array) de [RoleRepresentation](http://www.keycloak.org/docs-api/3.2/rest-api/index.html#_rolerepresentation) do Client indicado no parâmetro `client_id` ou, na falta desse, pelo Client do arquivo de instalação `keycloak.yml`.
 
 
 ```ruby
 Keycloak::Internal.get_client_user_roles(user_id, client_id = '', secret = '')
 ```
 
-`get_client_user_roles` invocará o método `Keycloak::Admin.get_effective_client_level_role_composite_user` considerando o Client indicado no parâmetro `client_id` ou, na falta desse, pelo Client do arquivo de instalação `keycloak.json` e o usuário representado pelo parâmetro `user_id`.
+`get_client_user_roles` invocará o método `Keycloak::Admin.get_effective_client_level_role_composite_user` considerando o Client indicado no parâmetro `client_id` ou, na falta desse, pelo Client do arquivo de instalação `keycloak.yml` e o usuário representado pelo parâmetro `user_id`.
 
 
 ```ruby

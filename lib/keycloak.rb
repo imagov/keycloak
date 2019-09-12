@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'keycloak/version'
 require 'rest-client'
 require 'json'
@@ -10,8 +12,7 @@ def isempty?(value)
 end
 
 module Keycloak
-  OLD_KEYCLOAK_JSON_FILE = 'keycloak.json'.freeze
-  KEYCLOAK_JSON_FILE = 'config/keycloak.json'.freeze
+  KEYCLOAK_YAML_FILE = 'config/keycloak.yml'.freeze
 
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
@@ -25,16 +26,14 @@ module Keycloak
   end
 
   def self.installation_file
-    @installation_file ||= if File.exist?(KEYCLOAK_JSON_FILE)
-                             KEYCLOAK_JSON_FILE
-                           else
-                             OLD_KEYCLOAK_JSON_FILE
+    @installation_file ||= if File.exist?(KEYCLOAK_YAML_FILE)
+                             KEYCLOAK_YAML_FILE
                            end
   end
 
   def self.installation_file=(file = nil)
     raise InstallationFileNotFound unless file.instance_of?(String) && File.exist?(file)
-    @installation_file = file || KEYCLOAK_JSON_FILE
+    @installation_file = file || KEYCLOAK_YAML_FILE
   end
 
   module Client
@@ -326,14 +325,15 @@ module Keycloak
 
       def self.get_installation
         if File.exists?(Keycloak.installation_file)
-          installation = JSON File.read(Keycloak.installation_file)
+          parser = ERB.new(File.read(Keycloak.installation_file))
+          installation = YAML.load(parser.result)
           @realm = installation["realm"]
           @client_id = installation["resource"]
           @secret = installation["credentials"]["secret"]
           @public_key = installation["realm-public-key"]
           @auth_server_url = installation["auth-server-url"]
         else
-          raise "#{Keycloak.installation_file} and relm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
+          raise "#{Keycloak.installation_file} and realm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
 
           @realm = Keycloak.realm
           @auth_server_url = Keycloak.auth_server_url
