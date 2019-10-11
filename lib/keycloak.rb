@@ -269,6 +269,25 @@ module Keycloak
       false
     end
 
+    def self.has_realm_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+      verify_setup
+
+      client_id = @client_id if isempty?(client_id)
+      secret = @secret if isempty?(secret)
+      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+
+      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
+        dt = decoded_access_token(access_token)[0]
+        dt = dt['realm_access']
+        unless dt.nil?
+          dt['roles'].each do |role|
+            return true if role.to_s == user_role.to_s
+          end
+        end
+      end
+      false
+    end
+
     def self.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
       verify_setup
 
