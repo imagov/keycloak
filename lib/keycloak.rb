@@ -58,7 +58,7 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_code(code, redirect_uri, client_id = '', secret = '', client_session_state = '')
+    def self.get_token_by_code(code, redirect_uri, client_id = '', secret = '', client_session_state = '', client_session_host = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -69,7 +69,8 @@ module Keycloak
                   'code' => code,
                   'grant_type' => 'authorization_code',
                   'redirect_uri' => redirect_uri,
-                  'client_session_state' => client_session_state}
+                  'client_session_state' => client_session_state,
+                  'client_session_host' => client_session_host}
 
       mount_request_token(payload)
     end
