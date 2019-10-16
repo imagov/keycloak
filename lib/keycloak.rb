@@ -53,12 +53,12 @@ module Keycloak
                   'client_secret' => secret,
                   'username' => user,
                   'password' => password,
-                  'grant_type' => 'password' }
+                  'grant_type' => 'password'}
 
       mount_request_token(payload)
     end
 
-    def self.get_token_by_code(code, redirect_uri, client_id = '', secret = '')
+    def self.get_token_by_code(code, redirect_uri, client_id = '', secret = '', client_session_state = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -68,7 +68,8 @@ module Keycloak
                   'client_secret' => secret,
                   'code' => code,
                   'grant_type' => 'authorization_code',
-                  'redirect_uri' => redirect_uri }
+                  'redirect_uri' => redirect_uri,
+                  'client_session_state' => client_session_state}
 
       mount_request_token(payload)
     end
@@ -80,7 +81,13 @@ module Keycloak
       secret = @secret if isempty?(secret)
       token_endpoint = @configuration['token_endpoint'] if isempty?(token_endpoint)
 
-      payload = { 'client_id' => client_id, 'client_secret' => secret, 'audience' => client_id, 'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange', 'subject_token_type' => 'urn:ietf:params:oauth:token-type:access_token', 'subject_issuer' => issuer, 'subject_token' => issuer_token }
+      payload = { 'client_id' => client_id,
+                  'client_secret' => secret,
+                  'audience' => client_id,
+                  'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange',
+                  'subject_token_type' => 'urn:ietf:params:oauth:token-type:access_token',
+                  'subject_issuer' => issuer,
+                  'subject_token' => issuer_token}
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
       _request = -> do
         RestClient.post(token_endpoint, payload, header){|response, request, result|
