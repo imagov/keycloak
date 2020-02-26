@@ -341,7 +341,7 @@ module Keycloak
           @public_key = installation["realm-public-key"]
           @auth_server_url = installation["auth-server-url"]
         else
-          raise "#{Keycloak.installation_file} and relm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
+          raise "#{Keycloak.installation_file} and realm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
 
           @realm = Keycloak.realm
           @auth_server_url = Keycloak.auth_server_url
