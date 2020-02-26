@@ -1,2 +1,4 @@
 keycloak-*.gem
 .rspec_status
+
+.idea
