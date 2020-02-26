@@ -422,6 +422,10 @@ module Keycloak
       generic_get("users/", query_parameters, access_token)
     end
 
+    def self.get_users_by_group(id, query_parameters = nil, access_token = nil)
+      generic_get("groups/#{id}/members", query_parameters, access_token)
+    end
+
     def self.create_user(user_representation, access_token = nil)
       generic_post("users/", nil, user_representation, access_token)
     end
@@ -460,6 +464,14 @@ module Keycloak
       generic_get("groups/", query_parameters, access_token)
     end
 
+    def self.get_users_by_role_name(role_name, query_parameters = nil, access_token = nil)
+      generic_get("roles/#{role_name}/users", query_parameters, access_token)
+    end
+
+    def self.get_groups_by_role_name(role_name, query_parameters = nil, access_token = nil)
+      generic_get("roles/#{role_name}/groups", query_parameters, access_token)
+    end
+
     def self.get_clients(query_parameters = nil, access_token = nil)
       generic_get("clients/", query_parameters, access_token)
     end
@@ -470,6 +482,10 @@ module Keycloak
 
     def self.get_roles_client_by_name(id, role_name, access_token = nil)
       generic_get("clients/#{id}/roles/#{role_name}", nil, access_token)
+    end
+
+    def self.get_users_client_by_role_name(id, role_name, access_token = nil)
+      generic_get("clients/#{id}/roles/#{role_name}/users", nil, access_token)
     end
 
     def self.add_client_level_roles_to_user(id, client, role_representation, access_token = nil)
@@ -593,6 +609,17 @@ module Keycloak
       default_call(proc, client_id, secret)
     end
 
+    def self.get_users_by_role_name(role_name, query_parameters = nil, client_id = '', secret = '')
+      client_id = Keycloak::Client.client_id if isempty?(client_id)
+      secret = Keycloak::Client.secret if isempty?(secret)
+
+      proc = lambda do |token|
+        Keycloak::Admin.get_users_by_role_name(role_name, query_parameters, token['access_token'])
+      end
+
+      default_call(proc, client_id, secret)
+    end
+
     def self.get_groups(query_parameters = nil, client_id = '', secret = '')
       client_id = Keycloak::Client.client_id if isempty?(client_id)
       secret = Keycloak::Client.secret if isempty?(secret)
@@ -600,6 +627,28 @@ module Keycloak
       proc = lambda { |token|
         Keycloak::Admin.get_groups(query_parameters, token['access_token'])
       }
+
+      default_call(proc, client_id, secret)
+    end
+
+    def self.get_groups_by_role_name(role_name, query_parameters = nil, client_id = '', secret = '')
+      client_id = Keycloak::Client.client_id if isempty?(client_id)
+      secret = Keycloak::Client.secret if isempty?(secret)
+
+      proc = lambda do |token|
+        Keycloak::Admin.get_groups_by_role_name(role_name, query_parameters, token['access_token'])
+      end
+
+      default_call(proc, client_id, secret)
+    end
+
+    def self.get_users_by_group(id, query_parameters = nil, client_id = '', secret = '')
+      client_id = Keycloak::Client.client_id if isempty?(client_id)
+      secret = Keycloak::Client.secret if isempty?(secret)
+
+      proc = lambda do |token|
+        Keycloak::Admin.get_users_by_group(id, query_parameters, token['access_token'])
+      end
 
       default_call(proc, client_id, secret)
     end
