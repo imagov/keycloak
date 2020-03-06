@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'keycloak/version'
 require 'rest-client'
 require 'json'
@@ -16,7 +18,8 @@ module Keycloak
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
                   :proc_cookie_token, :proc_external_attributes,
-                  :realm, :auth_server_url, :validate_token_when_call_has_role
+                  :realm, :auth_server_url, :validate_token_when_call_has_role,
+                  :secret, :resource
   end
 
   def self.explode_exception
@@ -345,6 +348,8 @@ module Keycloak
 
           @realm = Keycloak.realm
           @auth_server_url = Keycloak.auth_server_url
+          @client_id = Keycloak.resource
+          @secret = Keycloak.secret
         end
         openid_configuration
       end
