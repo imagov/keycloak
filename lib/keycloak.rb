@@ -17,7 +17,7 @@ module Keycloak
 
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-                  :proc_cookie_token, :proc_external_attributes,
+                  :proc_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
   end
@@ -306,10 +306,10 @@ module Keycloak
     end
 
     def self.token
-      if !Keycloak.proc_cookie_token.nil?
-        JSON Keycloak.proc_cookie_token.call
+      if !Keycloak.proc_token.nil?
+        JSON Keycloak.proc_token.call
       else
-        raise Keycloak::ProcCookieTokenNotDefined
+        raise Keycloak::ProcTokenNotDefined
       end
     end
 
