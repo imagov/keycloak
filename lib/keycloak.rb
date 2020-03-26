@@ -37,13 +37,22 @@ module Keycloak
     @installation_file = file || KEYCLOAK_JSON_FILE
   end
 
-  module Client
-    class << self
-      attr_accessor :realm, :auth_server_url
-      attr_reader :client_id, :secret, :configuration, :public_key
+  class Client
+    attr_accessor :realm, :auth_server_url
+    attr_reader :client_id, :secret, :configuration, :public_key
+
+    def initialize(options = nil)
+      return if options.nil?
+
+      @options = options
+      @realm = options[:realm]
+      @auth_server_url = options[:auth_server_url]
+      @client_id = options[:resource]
+      @secret = options[:credentials][:secret]
+      @public_key = options[:realm_public_key]
     end
 
-    def self.get_token(user, password, client_id = '', secret = '')
+    def get_token(user, password, client_id = '', secret = '')
       setup_module
 
       client_id = @client_id if isempty?(client_id)
@@ -58,7 +67,7 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_code(code, redirect_uri, client_id = '', secret = '')
+    def get_token_by_code(code, redirect_uri, client_id = '', secret = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -73,7 +82,7 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_exchange(issuer, issuer_token, client_id = '', secret = '', token_endpoint = '')
+    def get_token_by_exchange(issuer, issuer_token, client_id = '', secret = '', token_endpoint = '')
       setup_module
 
       client_id = @client_id if isempty?(client_id)
@@ -96,7 +105,7 @@ module Keycloak
       exec_request _request
     end
 
-    def self.get_userinfo_issuer(access_token = '', userinfo_endpoint = '')
+    def get_userinfo_issuer(access_token = '', userinfo_endpoint = '')
       verify_setup
 
       userinfo_endpoint = @configuration['userinfo_endpoint'] if isempty?(userinfo_endpoint)
@@ -113,7 +122,7 @@ module Keycloak
       exec_request _request
     end
 
-    def self.get_token_by_refresh_token(refresh_token = '', client_id = '', secret = '')
+    def get_token_by_refresh_token(refresh_token = '', client_id = '', secret = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -128,7 +137,7 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_by_client_credentials(client_id = '', secret = '')
+    def get_token_by_client_credentials(client_id = '', secret = '')
       setup_module
 
       client_id = @client_id if isempty?(client_id)
@@ -141,7 +150,7 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -171,7 +180,7 @@ module Keycloak
       exec_request _request
     end
 
-    def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '')
+    def url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -181,12 +190,12 @@ module Keycloak
       "#{authorization_endpoint}?#{p}"
     end
 
-    def self.logout(redirect_uri = '', refresh_token = '', client_id = '', secret = '', end_session_endpoint = '')
+    def logout(redirect_uri = '', refresh_token = '', client_id = '', secret = '', end_session_endpoint = '')
       verify_setup
 
-      if self.token || !refresh_token.empty?
+      if token || !refresh_token.empty?
 
-        refresh_token = self.token['refresh_token'] if refresh_token.empty?
+        refresh_token = token['refresh_token'] if refresh_token.empty?
         client_id = @client_id if isempty?(client_id)
         secret = @secret if isempty?(secret)
         end_session_endpoint = @configuration['end_session_endpoint'] if isempty?(end_session_endpoint)
@@ -220,10 +229,10 @@ module Keycloak
       end
     end
 
-    def self.get_userinfo(access_token = '', userinfo_endpoint = '')
+    def get_userinfo(access_token = '', userinfo_endpoint = '')
       verify_setup
 
-      access_token = self.token['access_token'] if access_token.empty?
+      access_token = token['access_token'] if access_token.empty?
       userinfo_endpoint = @configuration['userinfo_endpoint'] if isempty?(userinfo_endpoint)
 
       payload = { 'access_token' => access_token }
@@ -244,13 +253,13 @@ module Keycloak
       exec_request _request
     end
 
-    def self.url_user_account
+    def url_user_account
       verify_setup
 
       "#{@auth_server_url}/realms/#{@realm}/account"
     end
 
-    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -269,7 +278,7 @@ module Keycloak
       false
     end
 
-    def self.has_realm_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def has_realm_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -288,7 +297,7 @@ module Keycloak
       false
     end
 
-    def self.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
@@ -306,14 +315,14 @@ module Keycloak
       end
     end
 
-    def self.get_attribute(attributeName, access_token = '')
+    def get_attribute(attributeName, access_token = '')
       verify_setup
 
       attr = decoded_access_token(access_token)[0]
       attr[attributeName]
     end
 
-    def self.token
+    def token
       if !Keycloak.proc_cookie_token.nil?
         JSON Keycloak.proc_cookie_token.call
       else
@@ -321,7 +330,7 @@ module Keycloak
       end
     end
 
-    def self.external_attributes
+    def external_attributes
       if !Keycloak.proc_external_attributes.nil?
         Keycloak.proc_external_attributes.call
       else
@@ -329,99 +338,102 @@ module Keycloak
       end
     end
 
-    def self.decoded_access_token(access_token = '')
-      access_token = self.token["access_token"] if access_token.empty?
+    def decoded_access_token(access_token = '')
+      access_token = token["access_token"] if access_token.empty?
       JWT.decode access_token, @public_key, false, { :algorithm => 'RS256' }
     end
 
-    def self.decoded_refresh_token(refresh_token = '')
-      refresh_token = self.token["access_token"] if refresh_token.empty?
+    def decoded_refresh_token(refresh_token = '')
+      refresh_token = token["access_token"] if refresh_token.empty?
       JWT.decode refresh_token, @public_key, false, { :algorithm => 'RS256' }
     end
 
     private
 
-      KEYCLOACK_CONTROLLER_DEFAULT = 'session'.freeze
+    KEYCLOACK_CONTROLLER_DEFAULT = 'session'.freeze
 
-      def self.get_installation
-        if File.exists?(Keycloak.installation_file)
-          installation = JSON File.read(Keycloak.installation_file)
-          @realm = installation["realm"]
-          @client_id = installation["resource"]
-          @secret = installation["credentials"]["secret"]
-          @public_key = installation["realm-public-key"]
-          @auth_server_url = installation["auth-server-url"]
-        else
-          raise "#{Keycloak.installation_file} and relm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
+    def get_installation
+      get_installation_from_file if @options.nil?
+      openid_configuration
+    end
 
-          @realm = Keycloak.realm
-          @auth_server_url = Keycloak.auth_server_url
-        end
-        openid_configuration
+    def get_installation_from_file
+      if File.exists?(Keycloak.installation_file)
+        installation = JSON File.read(Keycloak.installation_file)
+        @realm = installation["realm"]
+        @client_id = installation["resource"]
+        @secret = installation["credentials"]["secret"]
+        @public_key = installation["realm-public-key"]
+        @auth_server_url = installation["auth-server-url"]
+      else
+        raise "#{Keycloak.installation_file} and relm settings not found." if isempty?(Keycloak.realm) || isempty?(Keycloak.auth_server_url)
+
+        @realm = Keycloak.realm
+        @auth_server_url = Keycloak.auth_server_url
       end
+    end
 
-      def self.verify_setup
-        get_installation if @configuration.nil?
-      end
+    def verify_setup
+      get_installation if @configuration.nil?
+    end
 
-      def self.setup_module
-        Keycloak.proxy ||= ''
-        Keycloak.keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
-        Keycloak.validate_token_when_call_has_role ||= false
-        get_installation
-      end
+    def setup_module
+      Keycloak.proxy ||= ''
+      Keycloak.keycloak_controller ||= KEYCLOACK_CONTROLLER_DEFAULT
+      Keycloak.validate_token_when_call_has_role ||= false
+      get_installation
+    end
 
-      def self.exec_request(proc_request)
-        if Keycloak.explode_exception
+    def exec_request(proc_request)
+      if Keycloak.explode_exception
+        proc_request.call
+      else
+        begin
           proc_request.call
-        else
-          begin
-            proc_request.call
-          rescue RestClient::ExceptionWithResponse => err
-            err.response
+        rescue RestClient::ExceptionWithResponse => err
+          err.response
+        end
+      end
+    end
+
+    def openid_configuration
+      RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
+      config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
+      _request = -> do
+        RestClient.get config_url
+      end
+      response = exec_request _request
+      if response.code == 200
+        @configuration = JSON response.body
+      else
+        response.return!
+      end
+    end
+
+    def mount_request_token(payload)
+      header = {'Content-Type' => 'application/x-www-form-urlencoded'}
+
+      _request = -> do
+        RestClient.post(@configuration['token_endpoint'], payload, header){|response, request, result|
+          case response.code
+          when 200
+            response.body
+          else
+            response.return!
           end
-        end
+        }
       end
 
-      def self.openid_configuration
-        RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
-        config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
-        _request = -> do
-          RestClient.get config_url
-        end
-        response = exec_request _request
-        if response.code == 200
-          @configuration = JSON response.body
-        else
-          response.return!
-        end
+      exec_request _request
+    end
+
+    def decoded_id_token(idToken = '')
+      tk = self.token
+      idToken = tk["id_token"] if idToken.empty?
+      if idToken
+        @decoded_id_token = JWT.decode idToken, @public_key, false, { :algorithm => 'RS256' }
       end
-
-      def self.mount_request_token(payload)
-        header = {'Content-Type' => 'application/x-www-form-urlencoded'}
-
-        _request = -> do
-          RestClient.post(@configuration['token_endpoint'], payload, header){|response, request, result|
-            case response.code
-            when 200
-              response.body
-            else
-              response.return!
-            end
-          }
-        end
-
-        exec_request _request
-      end
-
-      def self.decoded_id_token(idToken = '')
-        tk = self.token
-        idToken = tk["id_token"] if idToken.empty?
-        if idToken
-          @decoded_id_token = JWT.decode idToken, @public_key, false, { :algorithm => 'RS256' }
-        end
-      end
-
+    end
   end
 
   # Os recursos desse module (admin) serão utilizadas apenas por usuários que possuem as roles do client realm-management
