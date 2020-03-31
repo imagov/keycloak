@@ -152,7 +152,10 @@ To authenticate the users of your application using a template configured in Key
 Keycloak::Client.get_token_by_code(code, redirect_uri, client_id = '', secret = '')
 ```
 
-When using the `Keycloak::Client.url_login_redirect` method to get a `code`, pass it as a parameter in this method so that Keycloak returns a token, thus logging the user in the application. The second parameter (`redirect_uri`) must be passed so that when a token is made available, Keycloak redirects to the url informed.
+When using the `Keycloak::Client.url_login_redirect` method to get a `code`, pass it as a parameter in this method so that Keycloak returns a token, thus logging the user in the application. The second parameter (`redirect_uri`) must be the same one used in the call for `Keycloak::Client.url_login_redirect(redirect_uri, response_type = 'code')`.
+
+> If `redirect_uri` are not equal on both calls,  `Keycloak::Client.url_login_redirect` and `Keycloak::Client.get_token_by_code` you will receive the following error:
+> `{"error":"invalid_grant","error_description":"Incorrect redirect_uri"}`
 
 
 ```ruby
