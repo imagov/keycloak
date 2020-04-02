@@ -8,7 +8,7 @@ require 'uri'
 require_relative 'keycloak/base_client'
 require_relative 'keycloak/realm_client'
 require_relative 'keycloak/client'
-require_relative 'keycloak/client_manager'
+require_relative 'keycloak/manager_client'
 
 def isempty?(value)
   value.respond_to?(:empty?) ? !!value.empty? : !value
