@@ -20,6 +20,15 @@ module Keycloak
                   :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
+
+    def proc_cookie_token=(proc)
+      Thread.current[:proc_cookie_token] = proc
+    end
+
+    def proc_cookie_token
+      Thread.current[:proc_cookie_token]
+    end
+
   end
 
   def self.explode_exception
