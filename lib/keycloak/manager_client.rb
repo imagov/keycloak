@@ -22,6 +22,22 @@ module Keycloak
       response
     end
 
+
+    def add_roles_to_user(user_id:, roles:)
+      roles_mappings = JSON.parse(available_roles_for_user(user_id: user_id)).select {|role| roles.include? role['name']}
+      response = execute_http do
+        RestClient::Resource.new(roles_url(id: user_id)).post(roles_mappings.to_json, headers(access_token_for_manager))
+      end
+      response
+    end
+
+    def available_roles_for_user(user_id:)
+      response = execute_http do
+        RestClient::Resource.new(roles_url(id: user_id, available: true)).get(headers(access_token_for_manager))
+      end
+      response.body
+    end
+
     private
 
     def manager_name
@@ -42,6 +58,15 @@ module Keycloak
         "#{@realm_client.realm_admin_url}/users/#{id}"
       else
         "#{@realm_client.realm_admin_url}/users"
+      end
+    end
+
+    def roles_url(id:, available: false)
+      url = users_url(id: id)
+      if available
+        "#{url}/role-mappings/realm/available"
+      else
+        "#{url}/role-mappings/realm"
       end
     end
   end
