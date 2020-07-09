@@ -44,6 +44,8 @@ module Keycloak
     end 
 
   end
+  
+  extend Base
 
   def self.explode_exception
     Keycloak.generate_request_exception = true if Keycloak.generate_request_exception.nil?
@@ -62,8 +64,6 @@ module Keycloak
     raise InstallationFileNotFound unless file.instance_of?(String) && File.exist?(file)
     @installation_file = file || KEYCLOAK_JSON_FILE
   end
-
-  extend Base
 
   module Client
     class << self
@@ -1054,6 +1054,7 @@ module Keycloak
         end
       end
     end
+
 end
 
 require 'keycloak/exceptions'
