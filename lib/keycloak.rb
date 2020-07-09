@@ -15,19 +15,33 @@ module Keycloak
   OLD_KEYCLOAK_JSON_FILE = 'keycloak.json'.freeze
   KEYCLOAK_JSON_FILE = 'config/keycloak.json'.freeze
 
-  class << self
+  class Config
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
                   :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
+  end
 
-    def proc_cookie_token=(proc)
-      Thread.current[:proc_cookie_token] = proc
+  module Base
+
+    def config
+      Thread.current[:keycloak_config] ||= Keycloak::Config.new
     end
 
-    def proc_cookie_token
-      Thread.current[:proc_cookie_token]
-    end
+    %w(proxy generate_request_exception keycloak_controller proc_cookie_token 
+      proc_external_attributes realm auth_server_url validate_token_when_call_has_role
+      secret resource).each do |method|
+    
+      module_eval <<-- DELEGATORS, __FILE__, ___LINE___ + 1
+        def #{method}
+          config.#{method}
+        end
+        
+        def #{method}=(value)
+          config.#{method} = (value)
+        end
+      DELEGATORS
+    end 
 
   end
 
