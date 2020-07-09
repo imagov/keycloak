@@ -32,7 +32,7 @@ module Keycloak
       proc_external_attributes realm auth_server_url validate_token_when_call_has_role
       secret resource).each do |method|
     
-      module_eval <<-- DELEGATORS, __FILE__, ___LINE___ + 1
+      module_eval <<-DELEGATORS, __FILE__, ___LINE___ + 1
         def #{method}
           config.#{method}
         end
