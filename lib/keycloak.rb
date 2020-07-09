@@ -63,6 +63,8 @@ module Keycloak
     @installation_file = file || KEYCLOAK_JSON_FILE
   end
 
+  extend Base
+
   module Client
     class << self
       attr_accessor :realm, :auth_server_url
