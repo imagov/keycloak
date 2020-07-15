@@ -22,12 +22,6 @@ module Keycloak
 
   module Base
 
-    class << self
-      attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-                    :realm, :auth_server_url, :validate_token_when_call_has_role,
-                    :secret, :resource
-    end
-
     def config
       Thread.current[:keycloak_config] ||= Keycloak::Config.new
     end
@@ -51,6 +45,12 @@ module Keycloak
   end
   
   extend Base
+
+  class << self
+    attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
+                  :realm, :auth_server_url, :validate_token_when_call_has_role,
+                  :secret, :resource
+  end
 
   def self.explode_exception
     Keycloak.generate_request_exception = true if Keycloak.generate_request_exception.nil?
