@@ -9,6 +9,13 @@ module Keycloak
       @user_manager = user_manager
     end
 
+    def get_user(user_id)
+      response = execute_http do
+        RestClient::Resource.new(users_url(id: user_id)).get(headers(access_token_for_manager))
+      end
+      response
+    end
+
     def create_user!(user_representation)
       save(user_representation)
     end
@@ -21,7 +28,6 @@ module Keycloak
       end
       response
     end
-
 
     def add_roles_to_user(user_id:, roles:)
       roles_mappings = JSON.parse(available_roles_for_user(user_id: user_id)).select {|role| roles.include? role['name']}
