@@ -379,7 +379,7 @@ module Keycloak
 
       def self.openid_configuration
         RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
-        config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
+        config_url = "#{@auth_server_url.chomp("/")}/realms/#{@realm}/.well-known/openid-configuration"
         _request = -> do
           RestClient.get config_url
         end
