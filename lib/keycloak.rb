@@ -44,7 +44,57 @@ module Keycloak
   module Client
     class << self
       attr_accessor :realm, :auth_server_url
-      attr_reader :client_id, :secret, :configuration, :public_key
+      attr_reader :client_id, :secret, :configuration, :public_key, :jwk_loader
+
+      def valid?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '', force_token_introspection: false)
+        if self.jwk_loader.nil? or force_token_introspection
+          begin
+            JSON(self.introspect(access_token, client_id, secret, token_introspection_endpoint))['active']
+          rescue StandardError => e
+            raise if e.class < Keycloak::KeycloakException
+
+            false
+          end
+        else
+          begin
+            JWT.decode access_token, nil, true, {algorithm: 'RS256', jwks: self.jwk_loader}
+            true
+          rescue JWT::DecodeError => e
+            false
+          end
+        end
+      end
+
+      def introspect(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+        verify_setup
+
+        client_id = @client_id if isempty?(client_id)
+        secret = @secret if isempty?(secret)
+        token = self.token['access_token'] if isempty?(token)
+        token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
+
+        payload = { 'token' => token }
+
+        authorization = Base64.strict_encode64("#{client_id}:#{secret}")
+        authorization = "Basic #{authorization}"
+
+        header = { 'Content-Type' => 'application/x-www-form-urlencoded',
+                   'authorization' => authorization }
+
+        request = lambda do
+          RestClient.post(token_introspection_endpoint, payload, header) do |response, _request, _result|
+            case response.code
+            when 200..399
+              response.body
+            else
+              response.return!
+            end
+          end
+        end
+
+        exec_request request
+      end
+      alias_method :get_token_introspection, :introspect
     end
 
     def self.get_token(user, password, client_id = '', secret = '')
@@ -153,36 +203,6 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
-      verify_setup
-
-      client_id = @client_id if isempty?(client_id)
-      secret = @secret if isempty?(secret)
-      token = self.token['access_token'] if isempty?(token)
-      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
-
-      payload = { 'token' => token }
-
-      authorization = Base64.strict_encode64("#{client_id}:#{secret}")
-      authorization = "Basic #{authorization}"
-
-      header = { 'Content-Type' => 'application/x-www-form-urlencoded',
-                 'authorization' => authorization }
-
-      request = lambda do
-        RestClient.post(token_introspection_endpoint, payload, header) do |response, _request, _result|
-          case response.code
-          when 200..399
-            response.body
-          else
-            response.return!
-          end
-        end
-      end
-
-      exec_request request
-    end
-
     def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '')
       verify_setup
 
@@ -288,13 +308,7 @@ module Keycloak
       secret = @secret if isempty?(secret)
       token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
 
-      begin
-        JSON(get_token_introspection(access_token, client_id, secret, token_introspection_endpoint))['active']
-      rescue StandardError => e
-        raise if e.class < Keycloak::KeycloakException
-
-        false
-      end
+      self.valid?(access_token, client_id, secret, token_introspection_endpoint, force_token_introspection: true)
     end
 
     def self.get_attribute(attribute_name, access_token = '')
@@ -345,6 +359,7 @@ module Keycloak
         @secret = Keycloak.secret
       end
       openid_configuration
+      jwks_configuration
     end
 
     def self.verify_setup
@@ -381,6 +396,29 @@ module Keycloak
         @configuration = JSON response.body
       else
         response.return!
+      end
+    end
+
+    def self.jwks_configuration
+      RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
+      if self.configuration['jwks_uri']
+        jwks_url = self.configuration['jwks_uri']
+        request = lambda do
+          RestClient.get jwks_url
+        end
+        @jwk_loader = ->(options) do
+          if options[:invalidate] # need to reload the keys
+            @cached_keys = nil
+            response = exec_request request
+            if response.code == 200
+              @configuration = JSON response.body
+            else
+              response.return!
+            end
+            @cached_keys = JSON response.body
+          end
+          @cached_keys
+        end
       end
     end
 
