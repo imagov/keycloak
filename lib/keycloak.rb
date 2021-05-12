@@ -46,10 +46,12 @@ module Keycloak
       attr_accessor :realm, :auth_server_url
       attr_reader :client_id, :secret, :configuration, :public_key, :jwk_loader
 
-      def valid?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '', force_token_introspection: false)
+      def valid?(access_token = '', client_id = '', secret = '', force_token_introspection: false)
+        verify_setup
+
         if self.jwk_loader.nil? or force_token_introspection
           begin
-            JSON(self.introspect(access_token, client_id, secret, token_introspection_endpoint))['active']
+            JSON(self.introspect(access_token, client_id, secret))['active']
           rescue StandardError => e
             raise if e.class < Keycloak::KeycloakException
 
@@ -64,14 +66,15 @@ module Keycloak
           end
         end
       end
+      alias_method :user_signed_in?, :valid?
 
-      def introspect(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+      def introspect(token = '', client_id = '', secret = '')
         verify_setup
 
         client_id = @client_id if isempty?(client_id)
         secret = @secret if isempty?(secret)
         token = self.token['access_token'] if isempty?(token)
-        token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
+        token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint'])
 
         payload = { 'token' => token }
 
@@ -282,14 +285,13 @@ module Keycloak
       "#{@auth_server_url}/realms/#{@realm}/account"
     end
 
-    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', force_token_introspection: false)
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
 
-      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
+      if valid?(access_token, client_id, secret, force_token_introspection: force_token_introspection)
         dt = decoded_access_token(access_token)[0]
         dt = dt['resource_access'][client_id]
         unless dt.nil?
@@ -299,16 +301,6 @@ module Keycloak
         end
       end
       false
-    end
-
-    def self.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
-      verify_setup
-
-      client_id = @client_id if isempty?(client_id)
-      secret = @secret if isempty?(secret)
-      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
-
-      self.valid?(access_token, client_id, secret, token_introspection_endpoint, force_token_introspection: true)
     end
 
     def self.get_attribute(attribute_name, access_token = '')
