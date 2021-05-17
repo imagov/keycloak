@@ -399,7 +399,7 @@ module Keycloak
           RestClient.get jwks_url
         end
         @jwk_loader = ->(options) do
-          if options[:invalidate] # need to reload the keys
+          if @cached_keys.nil? || options[:invalidate] # need to reload the keys
             @cached_keys = nil
             response = exec_request request
             if response.code == 200
