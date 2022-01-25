@@ -52,6 +52,3 @@ DEPENDENCIES
   keycloak!
   rake (~> 13.0)
   rspec (~> 3.0)
-
-BUNDLED WITH
-   1.16.2
