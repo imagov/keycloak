@@ -20,6 +20,7 @@ module Keycloak
                   :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
+    attr_writer :rest_client_config
   end
 
   def self.explode_exception
@@ -41,6 +42,10 @@ module Keycloak
     @installation_file = file || KEYCLOAK_JSON_FILE
   end
 
+  def self.rest_client_config
+    @rest_client_config || {}
+  end
+
   module Client
     class << self
       attr_accessor :realm, :auth_server_url
@@ -49,9 +54,9 @@ module Keycloak
       def valid?(access_token = '', client_id = '', secret = '', force_token_introspection: false)
         verify_setup
 
-        if self.jwk_loader.nil? or force_token_introspection
+        if jwk_loader.nil? or force_token_introspection
           begin
-            JSON(self.introspect(access_token, client_id, secret))['active']
+            JSON(introspect(access_token, client_id, secret))['active']
           rescue StandardError => e
             raise if e.class < Keycloak::KeycloakException
 
@@ -59,14 +64,14 @@ module Keycloak
           end
         else
           begin
-            JWT.decode access_token, nil, true, {algorithm: 'RS256', jwks: self.jwk_loader}
+            JWT.decode access_token, nil, true, { algorithm: 'RS256', jwks: jwk_loader }
             true
-          rescue JWT::DecodeError => e
+          rescue JWT::DecodeError => _e
             false
           end
         end
       end
-      alias_method :user_signed_in?, :valid?
+      alias user_signed_in? valid?
 
       def introspect(token = '', client_id = '', secret = '')
         verify_setup
@@ -85,7 +90,8 @@ module Keycloak
                    'authorization' => authorization }
 
         request = lambda do
-          RestClient.post(token_introspection_endpoint, payload, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :post, url: token_introspection_endpoint, payload: payload, headers: header,
+                                      **Keycloak.rest_client_config) do |response, _request, _result|
             case response.code
             when 200..399
               response.body
@@ -97,7 +103,7 @@ module Keycloak
 
         exec_request request
       end
-      alias_method :get_token_introspection, :introspect
+      alias get_token_introspection introspect
     end
 
     def self.get_token(user, password, client_id = '', secret = '')
@@ -148,7 +154,7 @@ module Keycloak
                   'subject_token' => issuer_token }
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
       request = lambda do
-        RestClient.post(token_endpoint, payload, header) do |response, _request, _result|
+        RestClient::Request.execute(method: :post, url: token_endpoint, payload: payload, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
           # case response.code
           # when 200
           # response.body
@@ -170,7 +176,7 @@ module Keycloak
       payload = { 'access_token' => access_token }
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
       request = lambda do
-        RestClient.post(userinfo_endpoint, payload, header) do |response, _request, _result|
+        RestClient::Request.execute(method: :post, url: userinfo_endpoint, payload: payload, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
           response.body
         end
       end
@@ -239,7 +245,7 @@ module Keycloak
                     end
 
         request = lambda do
-          RestClient.post(final_url, payload, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :post, url: final_url, payload: payload, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
             case response.code
             when 200..399
               true
@@ -266,7 +272,7 @@ module Keycloak
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
       request = lambda do
-        RestClient.post(userinfo_endpoint, payload, header) do |response, _request, _result|
+        RestClient::Request.execute(method: :post, url: userinfo_endpoint, payload: payload, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
           case response.code
           when 200
             response.body
@@ -381,7 +387,7 @@ module Keycloak
       RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
       config_url = "#{@auth_server_url.chomp('/')}/realms/#{@realm}/.well-known/openid-configuration"
       request = lambda do
-        RestClient.get config_url
+        RestClient::Request.execute(method: :get, url: config_url, **Keycloak.rest_client_config)
       end
       response = exec_request request
       if response.code == 200
@@ -393,24 +399,24 @@ module Keycloak
 
     def self.jwks_configuration
       RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
-      if self.configuration['jwks_uri']
-        jwks_url = self.configuration['jwks_uri']
-        request = lambda do
-          RestClient.get jwks_url
-        end
-        @jwk_loader = ->(options) do
-          if @cached_keys.nil? || options[:invalidate] # need to reload the keys
-            @cached_keys = nil
-            response = exec_request request
-            if response.code == 200
-              @configuration = JSON response.body
-            else
-              response.return!
-            end
-            @cached_keys = JSON response.body
+      return unless configuration['jwks_uri']
+
+      jwks_url = configuration['jwks_uri']
+      request = lambda do
+        RestClient::Request.execute(method: :get, url: jwks_url, **Keycloak.rest_client_config)
+      end
+      @jwk_loader = lambda do |options|
+        if @cached_keys.nil? || options[:invalidate] # need to reload the keys
+          @cached_keys = nil
+          response = exec_request request
+          if response.code == 200
+            @configuration = JSON response.body
+          else
+            response.return!
           end
-          @cached_keys
+          @cached_keys = JSON response.body
         end
+        @cached_keys
       end
     end
 
@@ -418,7 +424,8 @@ module Keycloak
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
       request = lambda do
-        RestClient.post(@configuration['token_endpoint'], payload, header) do |response, _request, _result|
+        RestClient::Request.execute(method: :post, url: @configuration['token_endpoint'], payload: payload, headers: header,
+                                    **Keycloak.rest_client_config) do |response, _request, _result|
           case response.code
           when 200
             response.body
@@ -901,33 +908,34 @@ module Keycloak
     end
 
     def self.default_call(proc, client_id = '', secret = '')
-        tk = nil
-        resp = nil
+      tk = nil
+      resp = nil
 
-        Keycloak::Client.installation
+      Keycloak::Client.installation
 
-        client_id = Keycloak::Client.client_id if isempty?(client_id)
-        secret = Keycloak::Client.secret if isempty?(secret)
+      client_id = Keycloak::Client.client_id if isempty?(client_id)
+      secret = Keycloak::Client.secret if isempty?(secret)
 
-        payload = { 'client_id' => client_id,
-                    'client_secret' => secret,
-                    'grant_type' => 'client_credentials' }
+      payload = { 'client_id' => client_id,
+                  'client_secret' => secret,
+                  'grant_type' => 'client_credentials' }
 
-        header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
+      header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
-        request = lambda do
-          RestClient.post(Keycloak::Client.configuration['token_endpoint'], payload, header) do |response, _request, _result|
-            case response.code
-            when 200..399
-              tk = JSON response.body
-              resp = proc.call(tk)
-            else
-              response.return!
-            end
+      request = lambda do
+        RestClient::Request.execute(method: :post, url: Keycloak::Client.configuration['token_endpoint'], payload: payload, headers: header,
+                                    **Keycloak.rest_client_config) do |response, _request, _result|
+          case response.code
+          when 200..399
+            tk = JSON response.body
+            resp = proc.call(tk)
+          else
+            response.return!
           end
         end
+      end
 
-        Keycloak::Client.exec_request request
+      Keycloak::Client.exec_request request
     ensure
       if tk and tk['refresh_token'].present?
         payload = { 'client_id' => client_id,
@@ -936,7 +944,8 @@ module Keycloak
 
         header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
         request = lambda do
-          RestClient.post(Keycloak::Client.configuration['end_session_endpoint'], payload, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :post, url: Keycloak::Client.configuration['end_session_endpoint'], payload: payload, headers: header,
+                                      **Keycloak.rest_client_config) do |response, _request, _result|
             case response.code
             when 200..399
               resp if resp.nil?
@@ -965,7 +974,7 @@ module Keycloak
     case method.upcase
     when 'GET'
       request = lambda do
-        RestClient.get(final_url, header) do |response, _request, _result|
+        RestClient::Request.execute(method: :get, url: final_url, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
           rescue_response(response)
         end
       end
@@ -975,11 +984,11 @@ module Keycloak
       request = lambda do
         case method.upcase
         when 'POST'
-          RestClient.post(final_url, parameters, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :post, url: final_url, payload: parameters, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
             rescue_response(response)
           end
         else
-          RestClient.put(final_url, parameters, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :put, url: final_url, payload: parameters, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
             rescue_response(response)
           end
         end
@@ -990,11 +999,11 @@ module Keycloak
           header['Content-Type'] = 'application/json'
           parameters = JSON.generate body_parameter
           RestClient::Request.execute(method: :delete, url: final_url,
-                                      payload: parameters, headers: header) do |response, _request, _result|
+                                      payload: parameters, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
             rescue_response(response)
           end
         else
-          RestClient.delete(final_url, header) do |response, _request, _result|
+          RestClient::Request.execute(method: :delete, url: final_url, headers: header, **Keycloak.rest_client_config) do |response, _request, _result|
             rescue_response(response)
           end
         end
