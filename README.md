@@ -85,18 +85,24 @@ It is recommended that your application has a controller that centralizes the se
 
 
 ```ruby
-Keycloak.proc_cookie_token
+Keycloak.proc_token
 ```
 
-This attribute is an anonymous method (lambda). The same must be implemented in the application so that the gem has access to the authentication token which, in turn, must be stored in the cookie. When performing the keycloak authentication through gem, the system must store the token returned in the browser cookie, such as:
+This attribute is an anonymous method (lambda). The same must be implemented in the application so that the gem has access to the authentication token which, in turn, must be stored in the cookie or session. When performing the keycloak authentication through gem, the system must store the token returned in the browser cookie, such as:
 ```ruby
 cookies.permanent[:keycloak_token] = Keycloak::Client.get_token(params[:user_login], params[:user_password])
 ```
 
-The application can retrieve the token in the cookie by implementing the `Keycloak.proc_cookie_token` method as follows:
+The application can retrieve the token in the cookie or session by implementing the `Keycloak.proc_token` method as follows:
 ```ruby
-Keycloak.proc_cookie_token = -> do
+Keycloak.proc_token = -> do
   cookies.permanent[:keycloak_token]
+end
+```
+Or
+```ruby
+Keycloak.proc_token = -> do
+  session[:keycloak_token]
 end
 ```
 This way, every time gem needs to use the token information to consume a Keycloak service, it will invoke this lambda method.
