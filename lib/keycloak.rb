@@ -15,9 +15,39 @@ module Keycloak
   OLD_KEYCLOAK_JSON_FILE = 'keycloak.json'.freeze
   KEYCLOAK_JSON_FILE = 'config/keycloak.json'.freeze
 
+  class Config
+    attr_accessor :proc_cookie_token, 
+                  :proc_external_attributes
+  end
+
+  module Base
+
+    def config
+      Thread.current[:keycloak_config] ||= Keycloak::Config.new
+    end
+
+    def proc_cookie_token
+      config.proc_cookie_token
+    end
+
+    def proc_cookie_token=(value)
+      config.proc_cookie_token = value
+    end
+
+    def proc_external_attributes
+      config.proc_external_attributes
+    end
+
+    def proc_external_attributes=(value)
+      config.proc_external_attributes = value
+    end
+
+  end
+  
+  extend Base
+
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-                  :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
   end
@@ -1029,6 +1059,7 @@ module Keycloak
         end
       end
     end
+
 end
 
 require 'keycloak/exceptions'
