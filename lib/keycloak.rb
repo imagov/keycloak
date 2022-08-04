@@ -158,7 +158,7 @@ module Keycloak
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
       token = self.token['access_token'] if isempty?(token)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
 
       payload = { 'token' => token }
 
@@ -266,7 +266,7 @@ module Keycloak
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
 
       if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
         dt = decoded_access_token(access_token)[0]
@@ -285,7 +285,7 @@ module Keycloak
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      token_introspection_endpoint = (@configuration['introspection_endpoint'] || @configuration['token_introspection_endpoint']) if isempty?(token_introspection_endpoint)
 
       begin
         JSON(get_token_introspection(access_token, client_id, secret, token_introspection_endpoint))['active'] === true
