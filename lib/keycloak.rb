@@ -180,13 +180,13 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.get_token_introspection(token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
       token = self.token['access_token'] if isempty?(token)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
       payload = { 'token' => token }
 
@@ -197,7 +197,7 @@ module Keycloak
                  'authorization' => authorization }
 
       _request = -> do
-        RestClient.post(token_introspection_endpoint, payload, header){|response, request, result|
+        RestClient.post(introspection_endpoint, payload, header){|response, request, result|
           case response.code
           when 200..399
             response.body
@@ -289,14 +289,14 @@ module Keycloak
       "#{@auth_server_url}/realms/#{@realm}/account"
     end
 
-    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
-      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
+      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, introspection_endpoint)
         dt = decoded_access_token(access_token)[0]
         dt = dt['resource_access'][client_id]
         unless dt.nil?
@@ -308,15 +308,15 @@ module Keycloak
       false
     end
 
-    def self.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.user_signed_in?(access_token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
       begin
-        JSON(get_token_introspection(access_token, client_id, secret, token_introspection_endpoint))['active'] === true
+        JSON(get_token_introspection(access_token, client_id, secret, introspection_endpoint))['active'] === true
       rescue => e
         if e.class < Keycloak::KeycloakException
           raise
