@@ -28,7 +28,8 @@ module Keycloak
                   'client_secret' => secret,
                   'username' => user,
                   'password' => password,
-                  'grant_type' => 'password' }
+                  'grant_type' => 'password',
+                  'scope' => 'openid' }
 
       mount_request_token(payload)
     end
