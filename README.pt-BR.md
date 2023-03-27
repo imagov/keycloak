@@ -173,7 +173,7 @@ Quando o usuário já estiver logado e a sua aplicação acompanhar internamente
 
 
 ```ruby
-Keycloak::Client.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+Keycloak::Client.get_token_introspection(token = '', client_id = '', secret = '', introspection_endpoint = '')
 ```
 
 Esse método retorna a as informações da sessão do `token` passado como parâmetro. Entre as informações retornadas, a mais importante é o campo `active`, pois ele informa se a sessão do token passado no parâmetro é ativo ou não. Isso auxiliará a sua aplicação a controlar se a sessão do usuário logado expirou ou não. Caso nenhum token seja passado como parâmetro, a gem utilizará o último `access_token` armazenado no cookie da aplicação.
@@ -208,14 +208,14 @@ Retorna a <b>url</b> para acesso ao cadastro de usuários do Reino do arquivo de
 
 
 ```ruby
-Keycloak::Client.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+Keycloak::Client.has_role?(user_role, access_token = '', client_id = '', secret = '', introspection_endpoint = '')
 ```
 
 O método `has_role?` decodifica o JWT `access_token` e verifica se o usuário dono do token possui o <b>role</b> informado no parâmetro `user_role`. Caso o `access_token` não seja informado, então a gem utilizará o `access_token` do cookie.
 
 
 ```ruby
-Keycloak::Client.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+Keycloak::Client.user_signed_in?(access_token = '', client_id = '', secret = '', introspection_endpoint = '')
 ```
 
 Esse método verifica se o `access_token` passado no parâmetro ainda está ativo. Para verificar se o usuário está ativo ou não, internamente a gem invoca o método `get_token_introspection`. Caso o `access_token` não seja informado, então a gem utilizará o `access_token` do cookie.
