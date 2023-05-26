@@ -336,7 +336,7 @@ module Keycloak
       KEYCLOACK_CONTROLLER_DEFAULT = 'session'.freeze
 
       def self.get_installation
-        if File.exists?(Keycloak.installation_file)
+        if File.exist?(Keycloak.installation_file)
           installation = JSON File.read(Keycloak.installation_file)
           @realm = installation["realm"]
           @client_id = installation["resource"]
