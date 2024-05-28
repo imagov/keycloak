@@ -210,14 +210,16 @@ module Keycloak
       exec_request _request
     end
 
-    def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '')
+    def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '', scope: [])
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       authorization_endpoint = @configuration['authorization_endpoint'] if isempty?(authorization_endpoint)
 
-      p = URI.encode_www_form(response_type: response_type, client_id: client_id, redirect_uri: redirect_uri)
-      "#{authorization_endpoint}?#{p}"
+      params = { response_type: response_type, client_id: client_id, redirect_uri: redirect_uri }
+      params[:scope] = scope.join(',') if scope.any?
+      encoded_uri = URI.encode_www_form(params)
+      "#{authorization_endpoint}?#{encoded_uri}"
     end
 
     def self.logout(redirect_uri = '', refresh_token = '', client_id = '', secret = '', end_session_endpoint = '')
