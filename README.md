@@ -6,8 +6,6 @@ Keycloak gem was developed to integrate applications and services into [Red Hat]
 
 Its development was based on version 3.2 of Keycloak, whose documentation can be found [here](http://www.keycloak.org/archive/documentation-3.2.html).
 
-Please be advised, this gem has almost no test-coverage.
-
 Publication of gem: https://rubygems.org/gems/keycloak
 
 Example: https://github.com/imagov/example-gem-keycloak
