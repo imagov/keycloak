@@ -35,5 +35,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.7"
   spec.add_runtime_dependency "rest-client", "2.1.0"
   spec.add_runtime_dependency "jwt", "2.4.1"
-  spec.add_runtime_dependency "json", "2.6.2"
+  spec.add_runtime_dependency "json", "~> 2.6.2"
 end
