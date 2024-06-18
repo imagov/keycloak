@@ -15,9 +15,37 @@ module Keycloak
   OLD_KEYCLOAK_JSON_FILE = 'keycloak.json'.freeze
   KEYCLOAK_JSON_FILE = 'config/keycloak.json'.freeze
 
+  class Config
+    attr_accessor :proc_cookie_token,
+                  :proc_external_attributes
+  end
+
+  module Base
+    def config
+      Thread.current[:keycloak_config] ||= Keycloak::Config.new
+    end
+
+    def proc_cookie_token
+      config.proc_cookie_token
+    end
+
+    def proc_cookie_token=(value)
+      config.proc_cookie_token = value
+    end
+
+    def proc_external_attributes
+      config.proc_external_attributes
+    end
+
+    def proc_external_attributes=(value)
+      config.proc_external_attributes = value
+    end
+  end
+
+  extend Base
+
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
-                  :proc_cookie_token, :proc_external_attributes,
                   :realm, :auth_server_url, :validate_token_when_call_has_role,
                   :secret, :resource
   end
@@ -152,13 +180,13 @@ module Keycloak
       mount_request_token(payload)
     end
 
-    def self.get_token_introspection(token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.get_token_introspection(token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
       token = self.token['access_token'] if isempty?(token)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
       payload = { 'token' => token }
 
@@ -169,7 +197,7 @@ module Keycloak
                  'authorization' => authorization }
 
       _request = -> do
-        RestClient.post(token_introspection_endpoint, payload, header){|response, request, result|
+        RestClient.post(introspection_endpoint, payload, header){|response, request, result|
           case response.code
           when 200..399
             response.body
@@ -182,14 +210,16 @@ module Keycloak
       exec_request _request
     end
 
-    def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '')
+    def self.url_login_redirect(redirect_uri, response_type = 'code', client_id = '', authorization_endpoint = '', scope: [])
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       authorization_endpoint = @configuration['authorization_endpoint'] if isempty?(authorization_endpoint)
 
-      p = URI.encode_www_form(response_type: response_type, client_id: client_id, redirect_uri: redirect_uri)
-      "#{authorization_endpoint}?#{p}"
+      params = { response_type: response_type, client_id: client_id, redirect_uri: redirect_uri }
+      params[:scope] = scope.join(',') if scope.any?
+      encoded_uri = URI.encode_www_form(params)
+      "#{authorization_endpoint}?#{encoded_uri}"
     end
 
     def self.logout(redirect_uri = '', refresh_token = '', client_id = '', secret = '', end_session_endpoint = '')
@@ -261,14 +291,14 @@ module Keycloak
       "#{@auth_server_url}/realms/#{@realm}/account"
     end
 
-    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.has_role?(user_role, access_token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
-      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, token_introspection_endpoint)
+      if !Keycloak.validate_token_when_call_has_role || user_signed_in?(access_token, client_id, secret, introspection_endpoint)
         dt = decoded_access_token(access_token)[0]
         dt = dt['resource_access'][client_id]
         unless dt.nil?
@@ -280,15 +310,15 @@ module Keycloak
       false
     end
 
-    def self.user_signed_in?(access_token = '', client_id = '', secret = '', token_introspection_endpoint = '')
+    def self.user_signed_in?(access_token = '', client_id = '', secret = '', introspection_endpoint = '')
       verify_setup
 
       client_id = @client_id if isempty?(client_id)
       secret = @secret if isempty?(secret)
-      token_introspection_endpoint = @configuration['token_introspection_endpoint'] if isempty?(token_introspection_endpoint)
+      introspection_endpoint = @configuration['introspection_endpoint'] if isempty?(introspection_endpoint)
 
       begin
-        JSON(get_token_introspection(access_token, client_id, secret, token_introspection_endpoint))['active'] === true
+        JSON(get_token_introspection(access_token, client_id, secret, introspection_endpoint))['active'] === true
       rescue => e
         if e.class < Keycloak::KeycloakException
           raise
