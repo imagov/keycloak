@@ -1,10 +1,10 @@
 PATH
   remote: .
   specs:
-    keycloak (3.2.2)
-      json (= 2.6.2)
-      jwt (= 2.4.1)
-      rest-client (= 2.1.0)
+    keycloak (3.3.0)
+      json (~> 2.6)
+      jwt (~> 2.4)
+      rest-client (~> 2.1)
 
 GEM
   remote: https://rubygems.org/
@@ -52,3 +52,6 @@ DEPENDENCIES
   keycloak!
   rake (~> 13.0)
   rspec (~> 3.7)
+
+BUNDLED WITH
+   2.5.11

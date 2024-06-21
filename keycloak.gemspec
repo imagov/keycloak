@@ -6,8 +6,8 @@ require "keycloak/version"
 Gem::Specification.new do |spec|
   spec.name          = "keycloak"
   spec.version       = Keycloak::VERSION
-  spec.authors       = ["Guilherme Portugues"]
-  spec.email         = ["g_portugues@hotmail.com"]
+  spec.authors       = ["Guilherme Portugues", "Leandro Vital Catarin"]
+  spec.email         = ["g_portugues@hotmail.com", "leavitals@gmail.com"]
 
   spec.summary       = %q{Add authentication to applications and secure services with Keycloak}
   #spec.description   = %q{TODO: Write a longer description or delete this line.}
@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 2.3"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.7"
-  spec.add_runtime_dependency "rest-client", "~> 2.1.0"
-  spec.add_runtime_dependency "jwt", "~> 2.4.1"
-  spec.add_runtime_dependency "json", "~> 2.6.2"
+  spec.add_runtime_dependency "rest-client", "~> 2.1"
+  spec.add_runtime_dependency "jwt", "~> 2.4"
+  spec.add_runtime_dependency "json", "~> 2.6"
 end
