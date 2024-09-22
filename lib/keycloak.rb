@@ -955,7 +955,7 @@ module Keycloak
 
           Keycloak::Client.exec_request _request
         ensure
-          if tk
+          if tk && tk["refresh_token"].present?
             payload = { 'client_id' => client_id,
                         'client_secret' => secret,
                         'refresh_token' => tk["refresh_token"] }
