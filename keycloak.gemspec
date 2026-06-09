@@ -34,6 +34,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.7"
   spec.add_runtime_dependency "rest-client", "~> 2.1"
-  spec.add_runtime_dependency "jwt", "~> 2.4"
-  spec.add_runtime_dependency "json", "~> 2.6"
+  spec.add_runtime_dependency "jwt", ">= 2.4", "< 4"
+  spec.add_runtime_dependency "json", "~> 2.6", "< 3"
 end
